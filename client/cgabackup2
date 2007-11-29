@@ -1,0 +1,385 @@
+#!/usr/bin/perl
+# Versionnummer
+$version="v2.01";
+
+###############################################################################
+# CGA-Backup v2                                                               #
+# (c)'00-02 Stephan Plepelits - plepelits@cg.tuwien.ac.at                     #
+# Vienna University of Technology                                             #
+# Institute of Computer Graphics and Algorithms                               # 
+###############################################################################
+
+# * New in v2.01 - 20071024
+#   In each directory touch the files 'last_backup_start' and 'last_backup_end', so
+#   we can check, on which day the last backup was made, and if it completed successfully
+#
+# * New in v2.00a
+#   Neue Config-Option im .cgabackup: "ERROR_MAIL" .. Nur wenn ERROR_MAIL 1 ist, wird
+#   ein Mail verfasst, wenn im Backup ein Fehler auftritt
+#
+# This version of cgabackup uses parts of Version 1.1
+# The greatest differnces is the method of the backup, in the former version
+# I used tar, piped over a rsh to the server.
+# The new version uses rsync instead, resulting in a completely new structutre
+# on the backupserver. Prior to now the files were stored in:
+# $hostdir/$servername-full/inc-$date.tar
+# In the new version the files are stored in: # $hostdir/$servername/current/
+# The replaced files are stored in # $hostdir/$servername/$date/
+# They will be removed savely by this script (in the former version, the files 
+# were removed by a static script on the backupserver)
+
+use POSIX qw(strftime);
+require 'getopt.pl';
+
+# Fill variables with standard-values.
+$RSH="rsh -lroot";
+$RSYNC="rsync";
+$SENDMAIL="/usr/lib/sendmail";
+
+# Hostname eruieren
+open(F, "hostname|");
+$HOSTNAME=<F>;
+chop($HOSTNAME);
+close(F);
+
+################################################################################
+# checkSubDir ( Dir, SubDir )
+# Returns the 'real' Subdir.
+################################################################################
+sub checkSubDir {
+  my $s=$_[0];
+#  print "sub=$s\n";
+
+  if($s =~ "^\\*") {
+    $s="/$s";
+  }
+  else {
+    # Replace leading dot through subdir 
+#    if($s eq ".") {
+#      $s="$subdir/";
+#    }
+    if($s =~ /^\.\/(.*)$/) {
+      $s="/$1";
+    }
+#    elsif($s =~ /^$subdir\/(.*)$/) {
+#      $s="$1";
+#    }
+    else {
+      $s="/$s";
+    }
+  }
+
+  return $s;
+}
+
+################################################################################
+# readCgBackup ( Subdir, Name von .cgabackup )
+# Returns a Hash with the Information from .cgabackup
+################################################################################
+sub readCgBackup {
+  my $filename=$_[0];
+  my $filename2=$_[1];
+  my %result=();
+  my @comb=();
+  my $mode;
+  my @backup;
+  my $dir;
+  my @parts;
+  my $part;
+  my @dirs;
+  my $open_success;
+
+  $open_success=0;
+  if(open(CONFIG, "$conf{dir}/$filename")) {
+    $open_success=1;
+  }
+  else {
+    if(open(CONFIG, "$conf{dir}/$filename2")) {
+      $open_success=1;
+    }
+  }
+
+  # Wenn kein BACKUP_MAILTO angegeben, dann den letzten Teil des Verzeichnisses als
+  # Mailto-Adresse nehmen
+  $conf{dir}=~/\/([^\/]*)$/;
+  $result{BACKUP_MAILTO}=$1;
+
+  # Open .cgabackup for reading
+  if($open_success) {
+  
+    ### Process whole file, save data in %result
+    while ($row=<CONFIG>) {
+      # We don't want any \n
+      chop($row);
+      chop($row) if(substr($row, length($row)-1, 1) eq "\r"); # fuer DOS-Files
+
+      # No Comments
+      if($row =~ /^(.*)#/) {
+        $row=$1;
+      }
+
+      # Check if this line continues ...
+      if($row =~ /\\$/) {
+        $cont=1;
+        $row=substr($row, 0, length($row)-2);
+      }
+      else {
+        $cont=0;
+      }
+
+      # List of Words, seperated by " " and "\t"
+      @words=split(/[ \t]+/, $row);
+      $row=join(" ", @words);
+
+      # If previous line ended on \
+      if($continued) {
+
+        # Add Line to Line in Hash
+        $result{$continued}="$result{$continued} $row";
+
+        # Reset $continued, if this row does not continue
+        $continued=0 if(!$cont);
+      }
+      else {
+
+        # Only lines with content are interesting
+        if($row ne "") {
+
+          # Check if syntax correct
+          if($ALLOWED_FIELDS_IN_CONFIG !~ " $words[0] ") {
+            print ERRORLOG "ERROR in .cgabackup!\n";
+          }
+
+          # Save Line in Hash.
+          $result{$words[0]}=join(" ", @words[1..@words-1]);
+
+          # Set $continued, if this row continues (\ at end)
+          $continued=0;
+          $continued=$words[0] if($cont);
+        
+        }
+        else {
+          # continued wieder richtig setzen.
+          $continued=0 if(!$cont);
+        }
+      }
+    }
+  }
+
+  if(!$result{'BACKUP'}) {
+  ### No .cgabackup ... Set Std-Config
+    $result{'BACKUP'}=". EXCLUDE $NOCFG_EXCLUDE";
+  }
+
+  # Die Std-Excludes ins Listing aufnehmen.
+  $result{'BACKUP'}.=" EXCLUDE $STD_EXCLUDES";
+
+  ### Aus 'BACKUP' den Backup-string holen
+
+  # Aus dem String ein Array machen, dass dann durchgegangen wird.
+  @backup=split(/[ \t]+/, $result{'BACKUP'});
+
+  $comb=( "", "" );
+  $mode=0; # 0..dirlist 1..exclude
+  for($i=0;$i<@backup;$i++) {
+    if($backup[$i] eq "EXCLUDE") {
+      $mode=1;
+    }
+    else {
+      $s=$backup[$i];
+      # Wenn String mit " beginnt, das Ende suchen und zusammenhaengen
+      if(substr($s, 0, 1) eq "\"") {
+        while(substr($s, length($s)-1, 1) ne "\"") {
+          $i++;
+          $s.=" $backup[$i]";
+        }
+        $s=substr($s, 1, length($s)-2);
+      }
+
+      # Wenn String auf \ endet, dann mit dem naechsten String zusammenhaengen
+      while(substr($s, length($s)-1, 1) eq "\\") {
+        $i++;
+        $s=substr($s, 0, length($s)-1)." $backup[$i]";
+      }
+
+      # xxx -> user/xxx bzw. ./xxx -> user/xxx
+      $s=checkSubDir($s);
+      
+      # In den String aufnehmen.
+      
+      # Wenn mode == exlude: --exclude=
+      if($mode==1) {
+        $comb[$mode].="--exclude=\"$s\" ";
+      }
+      else {
+        $comb[$mode].="\"$s\" ";
+      }
+    }
+  }
+
+  # Das ist der restliche Backupstring.
+  $result{"BACKUP_STRING"}.="$comb[1]"; # $comb[0]||";
+
+  # Und Baba
+  return %result;
+}
+
+
+sub do_backup() {
+  print "* ".$conf{dir}."\n";
+#  print $conf{host}."\n";
+#  print $conf{hostdir}."\n";
+
+  # Das Datum in Kurzform speichern
+  $date=strftime("%Y%m%d", localtime);
+
+  # Die Konfiguration einlesen
+  %cgabackup=readCgBackup("$conf{dir}", ".cgabackup");
+#  print $cgabackup{"BACKUP_MAILTO"}."\n";
+
+  # Die Beginnzeit speichern.
+  @starttime=localtime;
+  $starttime_format=strftime("%Y-%m-%d %H:%M:%S", @starttime);
+
+  # Am Server das Destination-Verzeichnis anlegen und touch the file last_backup_start
+  system("$RSH $conf{host} \"mkdir -p $conf{hostdir}/current ; echo $starttime_format > $conf{hostdir}/last_backup_start\"");
+
+  # Das Backup-Kommando
+  $error=system("$RSYNC -v -e $RSH -a --delete --delete-excluded $cgabackup{BACKUP_STRING} --exclude=/cgabackup*log --backup --backup-dir=../$date $conf{dir}/ $conf{host}:$conf{hostdir}/current > $conf{dir}/cgabackup-$date.log 2>> $conf{dir}/cgabackup-$date.log");
+
+  # Die Endzeit speichern.
+  @endtime=localtime;
+  $endtime_format=strftime("%Y-%m-%d %H:%M:%S", @endtime);
+
+  # Das Logfile auf den Server spielen, damit man nachlesen kann, was da war
+  system("$RSYNC -e $RSH $conf{dir}/cgabackup-$date.log $conf{host}:$conf{hostdir}/");
+
+  # touch the file last_backup_end
+  system("$RSH $conf{host} \"echo $endtime_format > $conf{hostdir}/last_backup_end\"");
+
+  if((($cgabackup{"BACKUP_ERRORMAIL"})&&($error))
+     ||($cgabackup{"BACKUP_SUCCESSMAIL"})) {
+    # Mailverschicken starten. (an und den im .cgabackup angegebenen)
+    print "Sending mail for $conf{dir}.\n" if($opt_d);
+    if(!$opt_m) {
+      # Die Uhrzeit im Subject
+      $mailtime=strftime("%D", @starttime);
+
+      # Mailsenden starten
+      if($cgabackup{'BACKUP_SUCCESSMAIL'}==-1) {
+        open(MAIL, ">/dev/null");
+      }
+      else {
+        open(MAIL, "|$SENDMAIL $cgabackup{'BACKUP_MAILTO'}");
+      }
+    }
+
+    print "Sending mail to $cgabackup{'BACKUP_MAILTO'}\n";
+    # To schreiben
+    print MAIL "To: $cgabackup{'BACKUP_MAILTO'}\n";
+    # Subject schreiben
+    print MAIL "Subject: CGA-Backup $version. Backup-Report $mailtime\n\n";
+
+    # Einleitung
+    if($error) {
+      print MAIL "Rsync exited with Error $error.\n\n";
+      print "There was error $error in the backup for $conf{dir}.\n";
+    }
+
+    # Infos uebers Backup reinschreiben
+    print MAIL "Backup of $HOSTNAME:$conf{dir}\n";
+    print MAIL "Backup-Start: ".strftime("%b %e %H:%M:%S", 
+                                @starttime)."\n";
+
+    # Das Ende des Backups reinschreiben
+    print MAIL "Backup-End: ".strftime("%b %e %H:%M:%S", @endtime)."\n\n";
+
+    print MAIL "Log of Backup:\n";
+      
+    # Das Log-File zum lesen oeffnen.
+    open(ERRORLOG, "<$conf{dir}/cgabackup-$date.log");
+
+    # Die Fehlermeldungen aus dem Logfile in Mail und auf stdout schreiben.
+    while($row=<ERRORLOG>) {
+     print MAIL "  $row";
+    }
+    
+    print MAIL "\n";
+
+    # Filehandler schliessen
+    close(MAIL);
+  }
+
+  unlink("$conf{dir}/cgabackup-$date.log");
+}
+
+sub do_backups() {
+  my %save_conf=%conf;
+
+  open(DIRLIST, "ls -d $conf{dir}|");
+  while($dir=<DIRLIST>) {
+    chop($dir);
+    $conf{dir}=$dir;
+    
+    $dir=~/\/([^\/]*)$/;
+    $postfix=$1;
+    $conf{hostdir}="$conf{hostdir}/$postfix";
+
+    do_backup();
+    %conf=%save_conf;
+  }
+  close(DIRLIST);
+}
+
+# Paramter in $opt_name speichern (zB -i -> $opt_i)
+do Getopt("c");
+
+# Parameterbehandlung
+if($opt_c) {
+  $CONFIGFILE=$opt_c;
+}
+
+# Configfile einlesen
+# Als erstes die Globalconfig einlesen, bis eine Leerzeile kommt.
+open(CONF, "<$CONFIGFILE") || die "$CONFIGFILE not found!\n";
+while(($row=<CONF>)&&($row ne "\n")&&($row ne "\r\n")) {
+  chop($row);
+  chop($row) if(substr($row, length($row)-1, 1) eq "\r"); # fuer DOS-Files
+  print "  config: $row\n";
+  if($row !~ /^#/) {
+    ($key, $value)=split("=", $row);
+    $globalconf{$key}=$value;
+  }
+}
+
+# Dann kommt die Config fuer die einzelnen Eintraege, wobei
+# einzelne Eintraege ueberschrieben werden koennen ...
+# darum die globalconf auf conf kopieren
+%conf=%globalconf;
+$found_conf=0;
+while($row=<CONF>) {
+  chop($row);
+  chop($row) if(substr($row, length($row)-1, 1) eq "\r"); # fuer DOS-Files
+  if($row !~ /^#/) {
+    if($row eq "") {
+      # Wenn Leerzeile, dann das Backup machen.
+      if($found_conf) {
+        do_backups();
+        %conf=%globalconf;
+        $found_conf=0;
+      }
+    }
+    else {
+      ($key, $value)=split("=", $row);
+      $conf{$key}=$value;
+      $found_conf=1;
+    }
+  }
+}
+
+# Am Schluss nochmal.
+if($found_conf) {
+  do_backups();
+}
+
+
