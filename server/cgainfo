@@ -1,0 +1,35 @@
+#!/usr/bin/perl
+
+sub find_root {
+  my $p=$_[0];
+
+  return $p if(-d "$p/current");
+
+  $p =~ /^(.*)\/([^\/]*)/;
+  return 0 if($1 eq "");
+
+  find_root($1);
+}
+
+foreach $f (@ARGV) {
+  #print "$f\n";
+
+  $p=`pwd`;
+  chop($p);
+
+  $root=find_root($p);
+  if(!$root) {
+    print STDERR "$f -> Root directory not found!\n";
+  }
+  else {
+    #print "$p\n";
+    #print "$root\n";
+    $f=substr($p, length($root)+1)."/".$f;
+    $f=~/^([^\/]*)\/(.*)/;
+    $f=$2;
+    print "$f\n";
+    chdir($root);
+    system("ls -l --sort time */$f");
+  }
+}
+

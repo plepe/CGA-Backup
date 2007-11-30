@@ -1,0 +1,9 @@
+=Personal Stuff
+:/backup-cg/host1/homes/%u:Your homedirectory on Zwirn
+:/backup-cg/host2/homepages/%u:Your personal homepage
+
+=Admin Stuff
+@admin:/backup-cg/host1/homes/*:Homedirectory %u on Zwirn:Homedirectories on Zwirn
+
+=Other Stuff
+user1,@admin:/backup-cg/host2/bla

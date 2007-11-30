@@ -1,0 +1,92 @@
+#!/usr/bin/perl
+use POSIX qw(strftime);
+
+$last="/xxx";
+
+sub month_sub {
+  my $str=$_[0];
+  my $sub=$_[1];
+
+  for($i=$sub;$i>0;$i--) {
+    if($str%100==1) {
+      $str=(substr($str, 0, 4)-1)*100+12;
+    }
+    else {
+      $str-=1;
+    }
+  }
+
+  return $str;
+}
+
+sub process {
+  my $p=$_[0];
+  my $keep=$_[1];
+  my $DIRS;
+
+  # Gibts hier eine Backup-Cfg? Wenn ja, dann Config ueberschreiben
+  if(-f "$p/backup.cfg") {
+    open($CFG, "<$p/backup.cfg");
+    while($r=<$CFG>) {
+      chop($r);
+      @a=split("=", $r);
+      $keep{$a[0]}=$a[1];
+    }
+    close($CFG);
+  }
+
+  # Wenns ein current Verzeichnis gibt, dann sind wir in einem aktiven Backup drin.
+  # Dort entsprechend der Config die alten Daten loeschen
+  if(-d "$p/current") {
+    print "* $p\n";
+    $oldest=strftime("%Y%m%d", localtime(time()-$keep{daily}*86400));
+    $oldest_monthly=month_sub(strftime("%Y%m", localtime(time())), $keep{monthly});
+    $oldest_quarterly=month_sub(strftime("%Y%m", localtime(time())), $keep{quarterly});
+
+    # Alten Mist loswerden
+    opendir($DIRS, $p);
+    while($r=readdir($DIRS)) {
+      # Daily Verzeichnis loeschen
+      if(($r=~/^[0-9]{8}$/)&&($r<$oldest)) {
+	print "  Loesche $p/$r\n";
+	system("rm -rf $p/$r");
+      }
+      # Log-Dateien loeschen
+      elsif(($r=~/^cgabackup-([0-9]{8}).log$/)&&($1<$oldest)) {
+	print "  Loesche $p/$r\n";
+	system("rm $p/$r");
+      }
+      # Monthly/Quarterly loeschen
+      elsif($r=~/^M([0-9]{6})$/) {
+	if((($1%100)%3==1)&&($1>$oldest_quarterly)) {
+	}
+	elsif($1<=$oldest_monthly) {
+	  print "  Loesche $p/$r\n";
+	  system("rm -rf $p/$r");
+	}
+      }
+    }
+    closedir($DIRS);
+
+    # Neues monatliches Backup anlegen, wenn noch keins existiert
+    $month_dir="M".strftime("%Y%m", localtime(time()));
+    if(!-d "$p/$month_dir") {
+      print "  Lege $p/$month_dir an\n";
+      system("cp -al $p/current $p/$month_dir");
+    }
+  }
+  else {
+    opendir($DIRS, $p);
+    while($r=readdir($DIRS)) {
+      if($r !~ /^\./) {
+	process("$p/$r", $keep);
+      }
+    }
+    closedir($DIRS);
+  }
+}
+
+$keep{'daily'}=7;
+$keep{'monthly'}=6;
+$keep{'quarterly'}=12;
+process("/backup-cg", $keep);

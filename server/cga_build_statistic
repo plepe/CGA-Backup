@@ -1,0 +1,302 @@
+#!/usr/bin/perl
+use POSIX qw(strftime);
+
+$var_file="/var/run/cg_build_statistic.state";
+$root="/backup-cg";
+
+sub save_var_info {
+  my $VAR;
+
+  open($VAR, ">$var_file");
+  print $VAR strftime("%Y-%m-%d", localtime)."\n";
+  print $VAR "not done\n";
+
+  print $VAR "[done]\n";
+  foreach(keys %done) {
+    print $VAR "$_\n";
+  }
+
+  print $VAR "[backup_not_ended]\n";
+  foreach(keys %backup_not_ended) {
+    print $VAR "$_:$backup_not_ended{$_}\n";
+  }
+
+  print $VAR "[backup_not_ended_unk]\n";
+  foreach(@backup_not_ended_unk) {
+    print $VAR "$_\n";
+  }
+
+  print $VAR "[progress_current_list]\n";
+  foreach(keys %progress_current_list) {
+    print $VAR "$_:$progress_current_list{$_}\n";
+  }
+
+  print $VAR "[progress_total_list]\n";
+  foreach(keys %progress_total_list) {
+    print $VAR "$_:$progress_total_list{$_}\n";
+  }
+
+  close($VAR);
+}
+
+sub load_var_info {
+  my $VAR;
+  my $mode;
+  my $date;
+  my $status;
+
+  if(-f "$var_file") {
+    open($VAR, "<$var_file");
+    $date=<$VAR>; chop($date);
+    $status=<$VAR>; chop($status);
+    if($date ne strftime("%Y-%m-%d", localtime)) {
+      if($status ne "done") {
+	print "Last statistic from $date not complete. Ignoring.\n";
+      }
+      return 0;
+    }
+
+    if($status eq "done") {
+      print "Today's statistic already finished. Exiting.\n";
+      exit;
+    }
+    else {
+      print "Last statistic from today not complete. Continuing.\n";
+    }
+
+    while ($r=<$VAR>) {
+      chop($r);
+      if($r =~ /^\[(.*)\]$/) {
+	$mode=$1;
+      }
+      else {
+	if($mode eq "done") {
+	  $done{$r}=1;
+	}
+	elsif($mode eq "backup_not_ended_unk") {
+	  push @backup_not_ended_unk, $r;
+	}
+	elsif($mode eq "backup_not_ended") {
+	  $r=~/^(.*):(.*)$/;
+	  $backup_not_ended{$1}=$2;
+	}
+	elsif($mode eq "progress_current_list") {
+	  $r=~/^(.*):(.*)$/;
+	  $progress_current_list{$1}=$2;
+	}
+	elsif($mode eq "progress_total_list") {
+	  $r=~/^(.*):(.*)$/;
+	  $progress_total_list{$1}=$2;
+	}
+      }
+    }
+    
+    close($VAR);
+  }
+}
+
+sub process {
+  my $p=$_[0];
+  my $r;
+  my $keep=$_[1];
+  my $DIRS;
+  my @list_m=();
+  my @list_d=();
+  my %stat_sum;
+  my %stat_modes;
+
+  # Wenns ein current Verzeichnis gibt, dann sind wir in einem aktiven Backup drin.
+  # Dort entsprechend der Config die alten Daten loeschen
+  if(-d "$p/current") {
+    #print "* $p\n";
+
+    if(!$done{$p}) {
+      opendir($DIRS, $p);
+      while($r=readdir($DIRS)) {
+	if($r =~ /^M[0-9]{6}/) {
+	  push @list_m, $r;
+	}
+	elsif($r =~ /^[0-9]{8}/) {
+	  push @list_d, $r;
+	}
+      }
+      @list_m=sort @list_m;
+      @list_d=sort @list_d;
+
+      # Wann wurde letztes Backup beendet
+      if(-f "$p/last_backup_end") {
+	open($D, "<$p/last_backup_end");
+	my $last_backup_end=<$D>;
+	chop($last_backup_end);
+
+	if($last_backup_end lt strftime("%Y-%m-%d 04:00", localtime(time-86400*3))) {
+	  $backup_not_ended{$p}=$last_backup_end;
+	}
+
+	close($D);
+      }
+      else {
+	push @backup_not_ended_unk, $p;
+      }
+
+      # Statistic generieren - all
+      system("echo '[fullsize]' > $p/statistic.new");
+      system("cd $p ; du -sk current ".(join(" ", @list_d))." ".(join(" ", @list_m)).
+	      " >> $p/statistic.new 2> /dev/null");
+      system("echo >> $p/statistic.new");
+      system("echo '[realsize]' >> $p/statistic.new");
+      system("cd $p ; du -skc current ".(join(" ", @list_d))." ".(join(" ", @list_m)).
+	      " >> $p/statistic.new 2> /dev/null");
+      system("echo >> $p/statistic.new");
+      system("echo '[backrealsize]' >> $p/statistic.new");
+      system("cd $p ; du -skc ".(join(" ", reverse(@list_m)))." current ".
+	      " >> $p/statistic.new 2> /dev/null");
+      system("mv $p/statistic.new $p/statistic");
+
+      # Statisticinfos generieren - current.progress
+      my $last_curr=0;
+      my $last_total=0;
+      my $last_date=0;
+      my $no_current=0;
+      if(open($D, "tail -n 2 $p/statistic.current.progress 2> /dev/null |")) {
+	 <$D> =~ /^([0-9]*) ([0-9]*)$/;
+	 my $pre_last_curr=$1;
+	 my $pre_last_date=$2;
+	 <$D> =~ /^([0-9]*) ([0-9]*)$/;
+	 $last_curr=$1;
+	 $last_date=$2;
+	 if($last_date eq strftime("%Y%m%d", localtime)) {
+	   $last_curr=$pre_last_curr;
+	   $last_date=$pre_last_date;
+	   $no_current=1;
+	 }
+
+	 close($D);
+      }
+  
+      if(!$no_current) {
+	system("V=`grep current $p/statistic | head -n1 | cut -f1` ; D=`date +\%Y\%m\%d` ; echo \"\$V \$D\" >> $p/statistic.current.progress");
+      }
+  
+      open($D, "tail -n 1 $p/statistic.current.progress|");
+      <$D> =~ /^([0-9]*) /;
+      $new_curr=$1;
+      close($D);
+  
+      my $progress=$new_curr-$last_curr;
+      $progress_current_list{$p}=$progress;
+
+      # Statisticinfos generieren - total.progress
+      my $no_total=0;
+      if(open($D, "tail -n 2 $p/statistic.total.progress 2> /dev/null |")) {
+	 <$D> =~ /^([0-9]*) ([0-9]*)$/;
+	 my $pre_last_total=$1;
+	 my $pre_last_date=$2;
+	 <$D> =~ /^([0-9]*) ([0-9]*)$/;
+	 $last_total=$1;
+	 $last_date=$2;
+	 if($last_date eq strftime("%Y%m%d", localtime)) {
+	   $last_total=$pre_last_total;
+	   $last_date=$pre_last_date;
+	   $no_total=1;
+	 }
+
+	 close($D);
+      }
+  
+      if(!$no_total) {
+	system("V=`grep total $p/statistic | head -n1 | cut -f1` ; D=`date +\%Y\%m\%d` ; echo \"\$V \$D\" >> $p/statistic.total.progress");
+      }
+  
+      open($D, "tail -n 1 $p/statistic.total.progress|");
+      <$D> =~ /^([0-9]*) /;
+      $new_total=$1;
+      close($D);
+  
+      my $progress=$new_total-$last_total;
+      $progress_total_list{$p}=$progress;
+
+      # finish
+      $done{$p}=1;
+
+      save_var_info();
+    }
+    else {
+      #print "skipping $p\n";
+    }
+  }
+  else {
+    opendir($DIRS, $p);
+    while($r=readdir($DIRS)) {
+      if(($r !~ /^\./)&&(-d "$p/$r")) { 
+	process("$p/$r");
+
+	open($stat, "<$p/$r/statistic")
+	  or print "no statistic in $p/$r/statistic\n";
+
+	$mode="";
+	while($x=<$stat>) {
+	  chop($x);
+	  if($x =~ /^\[(.*)\]/) {
+	    $mode=$1;
+	    $stat_modes{$1}=1;
+	  }
+	  elsif($x =~ /^([0-9]+)[ \t](.*)$/) {
+	    $stat_sum{"${mode}_$2"}+=$1;
+	  }
+	}
+	close($stat);
+      }
+    }
+#    closedir($DIRS);
+
+    open($stat, ">$p/statistic.new");
+    foreach $mode (keys %stat_modes) {
+      print $stat "[$mode]\n";
+      foreach(sort keys %stat_sum) {
+	if($_ =~ /^${mode}_(.*)$/) {
+	  print $stat "$1 $stat_sum{$_}\n";
+	}
+      }
+      print $stat "\n";
+    }
+    close($stat);
+    system("mv $p/statistic.new $p/statistic");
+  }
+}
+
+$keep{'daily'}=7;
+$keep{'monthly'}=6;
+$keep{'quarterly'}=4;
+
+load_var_info();
+
+process($root, $keep);
+
+@progress_current_list_sort=sort { $progress_current_list{$b} <=> $progress_current_list{$a} } keys %progress_current_list;
+@progress_current_list_sort=splice(@progress_current_list_sort, 0, 20);
+print "Folgende Backups haben sich relativ am meisten vergroessert:\n";
+foreach (@progress_current_list_sort) {
+  printf "  %-60s %9.2fM\n", $_, $progress_current_list{$_}/1024;
+}
+
+@progress_total_list_sort=sort { $progress_total_list{$b} <=> $progress_total_list{$a} } keys %progress_total_list;
+@progress_total_list_sort=splice(@progress_total_list_sort, 0, 20);
+print "Folgende Backups haben sich absolut am meisten vergroessert:\n";
+foreach (@progress_total_list_sort) {
+  printf "  %-60s %9.2fM\n", $_, $progress_total_list{$_}/1024;
+}
+
+print "\nFolgende Backups wurden seit mind. 3 Tagen nicht vollendet:\n";
+@backup_not_ended_sort=sort { $backup_not_ended{$b} cmp $backup_not_ended{$a} } keys %backup_not_ended;
+foreach(@backup_not_ended_sort) {
+  printf "  %-60s %10s\n", $_, $backup_not_ended{$_};
+}
+foreach(@backup_not_ended_unk) {
+  printf "  %-60s\n", $_;
+}
+
+open($VAR, ">$var_file");
+print $VAR strftime("%Y-%m-%d", localtime)."\n";
+print $VAR "done\n";
+close($VAR);
