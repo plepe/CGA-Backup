@@ -292,7 +292,8 @@ sub do_backup() {
                                 @starttime)."\n";
 
     # Das Ende des Backups reinschreiben
-    print MAIL "Backup-End: ".strftime("%b %e %H:%M:%S", @endtime)."\n\n";
+    print MAIL "Backup-End: ".strftime("%b %e %H:%M:%S", @endtime)."\n";
+    print MAIL "Backup-Host: $conf{host}\n\n";
 
     print MAIL "Log of Backup:\n";
       
