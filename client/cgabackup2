@@ -32,7 +32,7 @@ use POSIX qw(strftime);
 require 'getopt.pl';
 
 # Fill variables with standard-values.
-$RSH="rsh -lroot";
+$globalconf{rsh}="rsh -lroot";
 $RSYNC="rsync";
 $SENDMAIL="/usr/lib/sendmail";
 
@@ -252,7 +252,7 @@ sub do_backup() {
   $endtime_format=strftime("%Y-%m-%d %H:%M:%S", @endtime);
 
   # Das Logfile auf den Server spielen, damit man nachlesen kann, was da war
-  system("$RSYNC -e $RSH $conf{dir}/cgabackup-$date.log $conf{host}:$conf{hostdir}/");
+  system("$RSYNC -e $conf{rsh} $conf{dir}/cgabackup-$date.log $conf{host}:$conf{hostdir}/");
 
   # touch the file last_backup_end
   system("$RSH $conf{host} \"echo $endtime_format > $conf{hostdir}/last_backup_end\"");
