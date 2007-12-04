@@ -1,0 +1,56 @@
+#!/usr/bin/perl
+use POSIX qw(strftime);
+
+$root="/backup-cg";
+$file="statistic.current.progress";
+
+sub process {
+  my $p=$_[0];
+  my $r;
+  my %stat;
+
+  # Wenns ein current Verzeichnis gibt, dann sind wir in einem aktiven Backup drin.
+  # Dort entsprechend der Config die alten Daten loeschen
+  if(-d "$p/current") {
+    print "* $p\n";
+
+    open(P, "<$p/$file");
+    while($r=<P>) {
+      chop($r);
+      $r=~/^([0-9]*)[ \t]([0-9]*)$/;
+      
+      $stat{$2}=$1;
+    }
+    close(P);
+
+    return %stat;
+  }
+  else {
+    my $DIRS;
+    print "# $p\n";
+
+    opendir($DIRS, $p);
+    while($r=readdir($DIRS)) {
+      if(($r !~ /^\./)&&(-d "$p/$r")) { 
+	my %new_stat=process("$p/$r");
+
+        foreach(keys %new_stat) {
+          $stat{$_}+=$new_stat{$_};
+        }
+
+      }
+    }
+    closedir($DIRS);
+
+    open(P, ">$p/$file");
+    @stat_list=sort {$stat{$a} <=> $stat{$b}} keys %stat;
+    foreach(@stat_list) {
+      print P "$stat{$_}\t$_\n";
+    }
+    close(P);
+
+    return %stat;
+  }
+}
+
+process($root);

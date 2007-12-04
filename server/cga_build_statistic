@@ -2,8 +2,7 @@
 use POSIX qw(strftime);
 
 $var_file="/var/run/cg_build_statistic.state";
-#$root="/backup-cg";
-$root="/usr/people/skunk/code/techn/cgabackup/server/test";
+$root="/backup-cg";
 
 sub save_var_info {
   my $VAR;
