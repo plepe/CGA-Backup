@@ -1,15 +1,17 @@
 #!/usr/bin/perl
 use POSIX qw(strftime);
 
-$var_file="/var/run/cg_build_statistic.state";
-$root="/backup-cg";
+$var_file="/var/run/cga_build_statistic.state";
+$root="/backup-cg/";
+$debug=0;
 
 sub save_var_info {
   my $VAR;
+  $status=$_[0];
 
   open($VAR, ">$var_file");
   print $VAR strftime("%Y-%m-%d", localtime)."\n";
-  print $VAR "not done\n";
+  print $VAR "$status\n";
 
   print $VAR "[done]\n";
   foreach(keys %done) {
@@ -36,6 +38,56 @@ sub save_var_info {
     print $VAR "$_:$progress_total_list{$_}\n";
   }
 
+  print $VAR "[current_list]\n";
+  foreach(keys %current_list) {
+    print $VAR "$_:$current_list{$_}\n";
+  }
+
+  print $VAR "[total_list]\n";
+  foreach(keys %total_list) {
+    print $VAR "$_:$total_list{$_}\n";
+  }
+
+  close($VAR);
+}
+
+sub save_done_info {
+  my $VAR;
+
+  open($VAR, ">/var/lib/cgabackup/backup_not_ended");
+  foreach(keys %backup_not_ended) {
+    print $VAR "$_:$backup_not_ended{$_}\n";
+  }
+  close($VAR);
+
+  open($VAR, ">/var/lib/cgabackup/backup_not_ended_unk");
+  foreach(@backup_not_ended_unk) {
+    print $VAR "$_\n";
+  }
+  close($VAR);
+
+  open($VAR, ">/var/lib/cgabackup/progress_current_list");
+  foreach(keys %progress_current_list) {
+    print $VAR "$progress_current_list{$_}\t$_\n";
+  }
+  close($VAR);
+
+  open($VAR, ">/var/lib/cgabackup/progress_total_list");
+  foreach(keys %progress_total_list) {
+    print $VAR "$progress_total_list{$_}\t$_\n";
+  }
+  close($VAR);
+
+  open($VAR, ">/var/lib/cgabackup/current_list");
+  foreach(keys %current_list) {
+    print $VAR "$current_list{$_}\t$_\n";
+  }
+  close($VAR);
+
+  open($VAR, ">/var/lib/cgabackup/total_list");
+  foreach(keys %total_list) {
+    print $VAR "$total_list{$_}\t$_\n";
+  }
   close($VAR);
 }
 
@@ -122,6 +174,7 @@ sub update_progress {
   if(!$no_current) {
     system("V=`grep current $p/statistic | head -n1 | cut -f1` ; D=`date +\%Y\%m\%d` ; echo \"\$V \$D\" >> $p/statistic.current.progress");
   }
+  print "last current $last_curr\n" if($debug);
 
   # Statisticinfos generieren - total.progress
   my $no_total=0;
@@ -144,6 +197,9 @@ sub update_progress {
   if(!$no_total) {
     system("V=`grep total $p/statistic | head -n1 | cut -f1` ; D=`date +\%Y\%m\%d` ; echo \"\$V \$D\" >> $p/statistic.total.progress");
   }
+  print "last total $last_total\n" if($debug);
+
+  return ($last_curr, $last_total);
 }
 
 sub process {
@@ -234,7 +290,7 @@ sub process {
         system("mv $p/statistic.new $p/statistic");
       }
 
-      update_progress($p);
+      ($last_curr, $last_total)=update_progress($p);
  
       open($D, "tail -n 1 $p/statistic.current.progress|");
       <$D> =~ /^([0-9]*) /;
@@ -243,6 +299,7 @@ sub process {
   
       my $progress=$new_curr-$last_curr;
       $progress_current_list{$p}=$progress;
+      $current_list{$p}=$new_curr;
 
       open($D, "tail -n 1 $p/statistic.total.progress|");
       <$D> =~ /^([0-9]*) /;
@@ -251,11 +308,12 @@ sub process {
 
       my $progress=$new_total-$last_total;
       $progress_total_list{$p}=$progress;
+      $total_list{$p}=$new_total;
 
       # finish
       $done{$p}=1;
 
-      save_var_info();
+      save_var_info("not done");
     }
     else {
 #      print "skipping $p\n";
@@ -347,7 +405,5 @@ foreach(@backup_not_ended_unk) {
   print "\n";
 }
 
-open($VAR, ">$var_file");
-print $VAR strftime("%Y-%m-%d", localtime)."\n";
-print $VAR "done\n";
-close($VAR);
+save_var_info("done");
+save_done_info();
