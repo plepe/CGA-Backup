@@ -2,6 +2,8 @@
 require "inc.php";
 include "header.php";
 
+$main_path=$_REQUEST["main_path"];
+
 print "CGA-Backup :: User $user :: $pathlist[$main_path]<br><hr>\n";
 
 print "<a href='index.php'>Go to selection of backups</a><br>\n";

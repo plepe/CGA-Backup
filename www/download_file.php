@@ -1,5 +1,9 @@
 <?
 require "inc.php";
+$main_path=$_REQUEST["main_path"];
+$path=$_REQUEST["path"];
+$file=$_REQUEST["file"];
+$backup=$_REQUEST["backup"];
 
 Header("content-type: application/octet-stream");
 

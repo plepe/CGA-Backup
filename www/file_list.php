@@ -2,6 +2,9 @@
 require "inc.php";
 include "header.php";
 
+$main_path=$_REQUEST["main_path"];
+$path=$_REQUEST["path"];
+
 print "CGA-Backup :: User $user :: $pathlist[$main_path]<br><hr>\n";
 
 print "<a href='index.php'>Go to selection of backups</a><br>\n";
@@ -64,14 +67,14 @@ while($dir=readdir($d)) {
 }
       
 print "<p>\n";
-if($show_hidden) {
+if($_SESSION[show_hidden]) {
   print "<a href='file_list.php?main_path=$main_path&path=$path&show_hidden=no'>Don't show hidden files</a><br>\n";
 }
 else {
   print "<a href='file_list.php?main_path=$main_path&path=$path&show_hidden=yes'>Show hidden files</a><br>\n";
 }
 
-if($show_duplicate) {
+if($_SESSION[show_duplicate]) {
   print "<a href='file_list.php?main_path=$main_path&path=$path&show_duplicate=no'>Don't show duplicate backups of a file</a><br>\n";
 }
 else {
@@ -103,7 +106,7 @@ print "<h4>List of directories</h4>\n";
 ksort($dirlist);
 foreach($dirlist as $dir=>$data) {
   if(($dir!=".")&&($dir!=".."))
-    if(($show_hidden)||(substr($dir, 0, 1)!="."))
+    if(($_SESSION[show_hidden])||(substr($dir, 0, 1)!="."))
       print "<a href='file_list.php?main_path=$main_path&path=".rawurlencode("$path/$dir/")."'>$dir</a>\n";
       //print "<a href='file_list.php?main_path=$main_path&path=".
       //rawurlencode("$path/$dir")."'>$dir</a>\n";
@@ -114,7 +117,7 @@ ksort($filelist);
 
 print "<table>\n";
 foreach($filelist as $file=>$baklist) {
-  if(($show_hidden)||(substr($file, 0, 1)!=".")) {
+  if(($_SESSION[show_hidden])||(substr($file, 0, 1)!=".")) {
     $r=($r+1)%2;
     print "<tr class='row$r'><td valign='top'><b>";
     print "$file\n";
@@ -149,7 +152,7 @@ foreach($filelist as $file=>$baklist) {
 	print "</td><td>\n";
 	print strftime("%D %H:%M", $b[3]);
 	print "</td></tr>\n";
-	if(!$show_duplicate) {
+	if(!$_SESSION[show_duplicate]) {
 	  $show_inodes[]=$b[4]; // immer nur einen inode anzeigen, darum speichern
 	}
       }

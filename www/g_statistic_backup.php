@@ -4,6 +4,8 @@ require "inc.php";
 include "header.php";
 include "date.php";
 
+$main_path=$_REQUEST["main_path"];
+
 $progress_current=array();
 $progress_total=array();
 
@@ -25,9 +27,16 @@ fclose($stat);
 
 $x=array_values($progress_total);
 rsort($x);
+$highest_total=$x[0];
+
+$x=array_values($progress_current);
+rsort($x);
 $highest_current=$x[0];
 
-$highest=$highest_current;
+if($highest_current>$highest_total)
+  $highest=$highest_current;
+else
+  $highest=$highest_total;
 
 $days=365;
 $xpos=800;

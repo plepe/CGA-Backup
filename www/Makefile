@@ -1,4 +1,4 @@
-all: rootls rootopen rootisdir
+all: rootls rootopen rootisdir roottar
 
 rootls: rootls.o
 	gcc -o rootls rootls.o
@@ -13,6 +13,13 @@ rootopen: rootopen.o
 
 rootopen.o: rootopen.c
 	gcc -c rootopen.c
+
+roottar: roottar.o
+	gcc -o roottar roottar.o
+	chmod +s roottar
+
+roottar.o: roottar.c
+	gcc -c roottar.c
 
 rootisdir.o: rootisdir.c
 	gcc -c rootisdir.c
