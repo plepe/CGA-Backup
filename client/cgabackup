@@ -35,6 +35,7 @@ require 'getopt.pl';
 $globalconf{rsh}="rsh -lroot";
 $RSYNC="rsync";
 $SENDMAIL="/usr/lib/sendmail";
+$CONFIGFILE="/etc/cgabackup.conf";
 
 # Hostname eruieren
 open(F, "hostname|");
