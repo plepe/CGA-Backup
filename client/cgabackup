@@ -354,6 +354,9 @@ while(($row=<CONF>)&&($row ne "\n")&&($row ne "\r\n")) {
   }
 }
 
+# RSH aus globalconf auslesen
+$RSH=$globalconf{"rsh"};
+
 # Dann kommt die Config fuer die einzelnen Eintraege, wobei
 # einzelne Eintraege ueberschrieben werden koennen ...
 # darum die globalconf auf conf kopieren
