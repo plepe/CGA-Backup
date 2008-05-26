@@ -9,6 +9,11 @@ $version="v2.01";
 # Institute of Computer Graphics and Algorithms                               # 
 ###############################################################################
 
+# PARAMS:
+# -c file.conf        Use alternative Configfile
+# -p                  Pause after finishing Backup
+# -v                  Verbose-Mode
+
 # * New in v2.01 - 20071024
 #   In each directory touch the files 'last_backup_start' and 'last_backup_end', so
 #   we can check, on which day the last backup was made, and if it completed successfully
@@ -350,6 +355,9 @@ if($opt_c) {
 if($opt_v) {
   $VERBOSE=1;
 }
+if($opt_p) {
+  $PAUSE=1;
+}
 
 # Configfile einlesen
 # Als erstes die Globalconfig einlesen, bis eine Leerzeile kommt.
@@ -397,4 +405,8 @@ if($found_conf) {
   do_backups();
 }
 
-
+# Wenn eine Pause am Schluss erwuenscht ist, kurz warten
+if($PAUSE) {
+  print "Press Enter to continue ...";
+  read STDIN, $x, 1;
+}
