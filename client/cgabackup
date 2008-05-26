@@ -36,6 +36,7 @@ $globalconf{rsh}="rsh -lroot";
 $RSYNC="rsync";
 $SENDMAIL="/usr/lib/sendmail";
 $CONFIGFILE="/etc/cgabackup.conf";
+$VERBOSE=0;
 
 # Hostname eruieren
 open(F, "hostname|");
@@ -245,8 +246,14 @@ sub do_backup() {
   # Am Server das Destination-Verzeichnis anlegen und touch the file last_backup_start
   system("$RSH $conf{host} \"mkdir -p $conf{hostdir}/current ; echo $starttime_format > $conf{hostdir}/last_backup_start\"");
 
+  # Wohin soll die Ausgabe hingeleitet werden? Std.maessig nur ins Logfile
+  $redirect="> $conf{dir}/cgabackup-$date.log 2>> $conf{dir}/cgabackup-$date.log";
+  if($VERBOSE) {
+    $redirect="2>&1 | tee $conf{dir}/cgabackup-$date.log";
+  }
+
   # Das Backup-Kommando
-  $error=system("$RSYNC -v -e $RSH -a --delete --delete-excluded $cgabackup{BACKUP_STRING} --exclude=/cgabackup*log --backup --backup-dir=../$date $conf{dir}/ $conf{host}:$conf{hostdir}/current > $conf{dir}/cgabackup-$date.log 2>> $conf{dir}/cgabackup-$date.log");
+  $error=system("$RSYNC -v -e $RSH -a --delete --delete-excluded $cgabackup{BACKUP_STRING} --exclude=/cgabackup*log --backup --backup-dir=../$date $conf{dir}/ $conf{host}:$conf{hostdir}/current $redirect");
 
   # Die Endzeit speichern.
   @endtime=localtime;
@@ -339,6 +346,9 @@ do Getopt("c");
 # Parameterbehandlung
 if($opt_c) {
   $CONFIGFILE=$opt_c;
+}
+if($opt_v) {
+  $VERBOSE=1;
 }
 
 # Configfile einlesen
