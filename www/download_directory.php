@@ -8,8 +8,7 @@ if(substr($wholepath, strlen($wholepath)-1, 1)=="/") {
   $wholepath=substr($wholepath, 0, strlen($wholepath)-1);
 }
 ereg("^(.*)/([^\/]*)$", $wholepath, $m);
-chdir($wholepath);
-$p=popen("/var/www/roottar", "r");
+$p=popen("/var/www/roottar \"$wholepath\"", "r");
 Header("content-type: application/x-gzip");
 while($r=fread($p, 1024)) {
   print($r);

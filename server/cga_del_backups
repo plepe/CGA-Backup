@@ -71,8 +71,21 @@ sub process {
     # Neues monatliches Backup anlegen, wenn noch keins existiert
     $month_dir="M".strftime("%Y%m", localtime(time()));
     if(!-d "$p/$month_dir") {
-      print "  Lege $p/$month_dir an\n";
-      system("cp -al $p/current $p/$month_dir");
+      $not_mk_month=0;
+      if(-f "$p/last_backup_start") {
+        @s=stat("$p/last_backup_start");
+	if($s[9]+86400*31<time()) {
+	  $not_mk_month="kein Backup im letzten Monat";
+	}
+      }
+
+      if($not_mk_month) {
+	print "  Lege $p/$month_dir nicht an: $not_mk_month\n";
+      }
+      else {
+	print "  Lege $p/$month_dir an\n";
+	system("cp -al $p/current $p/$month_dir");
+      }
     }
   }
   else {
