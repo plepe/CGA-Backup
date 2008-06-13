@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use POSIX qw(strftime);
 
+$gb=1024*1024;
+
 $var_file="/var/run/cga_build_statistic.state";
 $root="/backup-cg/";
 $debug=0;
@@ -370,16 +372,36 @@ load_var_info();
 
 process($root, $keep);
 
+print "Uebersicht ueber die Dateisysteme:\n";
+printf("%-30s  %8s  %8s  %8s  %4s  (%7s)\n", "Mounted on", "Size", "Used", "Avail", "Use%", "Change");
+open(DF, "df -k|");
+while($r=<DF>) {
+  if($r =~ /[\t ]+([0-9]+)[\t ]*([0-9]+)[\t ]*([0-9]+)[\t ]*([0-9]+%)[\t ]*(\/backup[A-Za-z0-9\-\/_]+)$/) {
+    open($statdf, "tail -n1 $5/statistic.df | cut -d\" \" -f1 |");
+    $last=<$statdf>;
+    close($statdf);
+
+    printf("%-30s %8.1fG %8.1fG %8.1fG  %3.0f%%  (%+6.1fG)\n", $5, $1/$gb, $2/$gb, $3/$gb, $4, ($2-$last)/$gb);
+
+    open($statdf, ">>$5/statistic.df");
+    print $statdf sprintf("%s %s\n", $2, strftime("%Y-%m-%d", localtime));
+    close($statdf);
+  }
+}
+close(DF);
+print "\n";
+
+print "Folgende Backups haben sich relativ am meisten vergroessert:\n";
 @progress_current_list_sort=sort { $progress_current_list{$b} <=> $progress_current_list{$a} } keys %progress_current_list;
 @progress_current_list_sort=splice(@progress_current_list_sort, 0, 20);
-print "Folgende Backups haben sich relativ am meisten vergroessert:\n";
 foreach (@progress_current_list_sort) {
   printf "  %-60s %9.2fM\n", $_, $progress_current_list{$_}/1024;
 }
+print "\n";
 
+print "Folgende Backups haben sich absolut am meisten vergroessert:\n";
 @progress_total_list_sort=sort { $progress_total_list{$b} <=> $progress_total_list{$a} } keys %progress_total_list;
 @progress_total_list_sort=splice(@progress_total_list_sort, 0, 20);
-print "Folgende Backups haben sich absolut am meisten vergroessert:\n";
 foreach (@progress_total_list_sort) {
   printf "  %-60s %9.2fM\n", $_, $progress_total_list{$_}/1024;
 }
