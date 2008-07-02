@@ -20,6 +20,16 @@ sub process {
     system("mv current $current");
     system("ln -s $current last_backup");
     system("mv statistic.current.progress statistic.last_backup.progress");
+
+    opendir($D, $p);
+    while($f=readdir($D)) {
+      if(($f=~/^[0-9]{8}$/)&&($f>$current)) {
+	print "is newer $f\n";
+	system("rm -r $f");
+      }
+    }
+    closedir($D);
+
   }
   else {
     opendir($DIRS, $p);
