@@ -30,9 +30,9 @@ sub save_var_info {
     print $VAR "$_\n";
   }
 
-  print $VAR "[progress_current_list]\n";
-  foreach(keys %progress_current_list) {
-    print $VAR "$_:$progress_current_list{$_}\n";
+  print $VAR "[progress_last_backup_list]\n";
+  foreach(keys %progress_last_backup_list) {
+    print $VAR "$_:$progress_last_backup_list{$_}\n";
   }
 
   print $VAR "[progress_total_list]\n";
@@ -40,9 +40,9 @@ sub save_var_info {
     print $VAR "$_:$progress_total_list{$_}\n";
   }
 
-  print $VAR "[current_list]\n";
-  foreach(keys %current_list) {
-    print $VAR "$_:$current_list{$_}\n";
+  print $VAR "[last_backup_list]\n";
+  foreach(keys %last_backup_list) {
+    print $VAR "$_:$last_backup_list{$_}\n";
   }
 
   print $VAR "[total_list]\n";
@@ -68,9 +68,9 @@ sub save_done_info {
   }
   close($VAR);
 
-  open($VAR, ">/var/lib/cgabackup/progress_current_list");
-  foreach(keys %progress_current_list) {
-    print $VAR "$progress_current_list{$_}\t$_\n";
+  open($VAR, ">/var/lib/cgabackup/progress_last_backup_list");
+  foreach(keys %progress_last_backup_list) {
+    print $VAR "$progress_last_backup_list{$_}\t$_\n";
   }
   close($VAR);
 
@@ -80,9 +80,9 @@ sub save_done_info {
   }
   close($VAR);
 
-  open($VAR, ">/var/lib/cgabackup/current_list");
-  foreach(keys %current_list) {
-    print $VAR "$current_list{$_}\t$_\n";
+  open($VAR, ">/var/lib/cgabackup/last_backup_list");
+  foreach(keys %last_backup_list) {
+    print $VAR "$last_backup_list{$_}\t$_\n";
   }
   close($VAR);
 
@@ -105,17 +105,17 @@ sub load_var_info {
     $status=<$VAR>; chop($status);
     if($date ne strftime("%Y-%m-%d", localtime)) {
       if($status ne "done") {
-	print "Last statistic from $date not complete. Ignoring.\n";
+	print MAIL "Last statistic from $date not complete. Ignoring.\n";
       }
       return 0;
     }
 
     if($status eq "done") {
-      print "Today's statistic already finished. Exiting.\n";
+      print MAIL "Today's statistic already finished. Exiting.\n";
       exit;
     }
     else {
-      print "Last statistic from today not complete. Continuing.\n";
+      print MAIL "Last statistic from today not complete. Continuing.\n";
     }
 
     while ($r=<$VAR>) {
@@ -134,9 +134,9 @@ sub load_var_info {
 	  $r=~/^(.*):(.*)$/;
 	  $backup_not_ended{$1}=$2;
 	}
-	elsif($mode eq "progress_current_list") {
+	elsif($mode eq "progress_last_backup_list") {
 	  $r=~/^(.*):(.*)$/;
-	  $progress_current_list{$1}=$2;
+	  $progress_last_backup_list{$1}=$2;
 	}
 	elsif($mode eq "progress_total_list") {
 	  $r=~/^(.*):(.*)$/;
@@ -152,12 +152,12 @@ sub load_var_info {
 sub update_progress {
   $p=$_[0];
 
-  # Statisticinfos generieren - current.progress
+  # Statisticinfos generieren - last_backup.progress
   my $last_curr=0;
   my $last_total=0;
   my $last_date=0;
-  my $no_current=0;
-  if(open($D, "tail -n 2 $p/statistic.current.progress 2> /dev/null |")) {
+  my $no_last_backup=0;
+  if(open($D, "tail -n 2 $p/statistic.last_backup.progress 2> /dev/null |")) {
      <$D> =~ /^([0-9]*) ([0-9]*)$/;
      my $pre_last_curr=$1;
      my $pre_last_date=$2;
@@ -167,16 +167,16 @@ sub update_progress {
      if($last_date eq strftime("%Y%m%d", localtime)) {
        $last_curr=$pre_last_curr;
        $last_date=$pre_last_date;
-       $no_current=1;
+       $no_last_backup=1;
      }
 
      close($D);
   }
 
-  if(!$no_current) {
-    system("V=`grep current $p/statistic | head -n1 | cut -f1` ; D=`date +\%Y\%m\%d` ; echo \"\$V \$D\" >> $p/statistic.current.progress");
+  if(!$no_last_backup) {
+    system("V=`grep $last_date $p/statistic | head -n1 | cut -f1` ; D=`date +\%Y\%m\%d` ; echo \"\$V \$D\" >> $p/statistic.last_backup.progress");
   }
-  print "last current $last_curr\n" if($debug);
+  print "last last_backup $last_curr\n" if($debug);
 
   # Statisticinfos generieren - total.progress
   my $no_total=0;
@@ -207,30 +207,23 @@ sub update_progress {
 sub process {
   my $p=$_[0];
   my $r;
-  my $keep=$_[1];
   my $DIRS;
-  my @list_m=();
-  my @list_d=();
+  my @list=();
   my %stat_sum;
   my %stat_modes;
 
-  # Wenns ein current Verzeichnis gibt, dann sind wir in einem aktiven Backup drin.
-  # Dort entsprechend der Config die alten Daten loeschen
-  if(-d "$p/current") {
+  # Wenns einen last_backup-Link gibt, dann sind wir in einem aktiven Backup drin.
+  if(-l "$p/last_backup") {
     #print "* $p\n";
 
     if(!$done{$p}) {
       opendir($DIRS, $p);
       while($r=readdir($DIRS)) {
-	if($r =~ /^M[0-9]{6}/) {
-	  push @list_m, $r;
-	}
 	elsif($r =~ /^[0-9]{8}/) {
-	  push @list_d, $r;
+	  push @list, $r;
 	}
       }
-      @list_m=sort @list_m;
-      @list_d=sort @list_d;
+      @list=sort @list;
 
       # Wann wurde letztes Backup beendet
       if(-f "$p/last_backup_end") {
@@ -279,30 +272,29 @@ sub process {
       if($new_backup) {
         # Statistic generieren - all
         system("echo '[fullsize]' > $p/statistic.new");
-        system("cd $p ; du -skl current ".(join(" ", @list_d))." ".(join(" ", @list_m)).
+        system("cd $p ; du -skl ".(join(" ", @list)).
                 " >> $p/statistic.new 2> /dev/null");
         system("echo >> $p/statistic.new");
         system("echo '[realsize]' >> $p/statistic.new");
-        system("cd $p ; du -skc current ".(join(" ", reverse(@list_d)))." ".
-	        (join(" ", reverse(@list_m))).
+        system("cd $p ; du -skc ".(join(" ", reverse(@list_d))).
                 " >> $p/statistic.new 2> /dev/null");
         system("echo >> $p/statistic.new");
         system("echo '[backrealsize]' >> $p/statistic.new");
-        system("cd $p ; du -skc ".(join(" ", @list_m))." current ".
+        system("cd $p ; du -skc ".(join(" ", @list_m)).
                 " >> $p/statistic.new 2> /dev/null");
         system("mv $p/statistic.new $p/statistic");
       }
 
       ($last_curr, $last_total)=update_progress($p);
  
-      open($D, "tail -n 1 $p/statistic.current.progress|");
+      open($D, "tail -n 1 $p/statistic.last_backup.progress|");
       <$D> =~ /^([0-9]*) /;
       $new_curr=$1;
       close($D);
   
       my $progress=$new_curr-$last_curr;
-      $progress_current_list{$p}=$progress;
-      $current_list{$p}=$new_curr;
+      $progress_last_backup_list{$p}=$progress;
+      $last_backup_list{$p}=$new_curr;
 
       open($D, "tail -n 1 $p/statistic.total.progress|");
       <$D> =~ /^([0-9]*) /;
@@ -329,7 +321,7 @@ sub process {
 	process("$p/$r");
 
 	open($stat, "<$p/$r/statistic")
-	  or print "no statistic in $p/$r/statistic\n";
+	  or print MAIL "no statistic in $p/$r/statistic\n";
 
 	$mode="";
 	while($x=<$stat>) {
@@ -364,16 +356,17 @@ sub process {
   }
 }
 
-$keep{'daily'}=7;
-$keep{'monthly'}=6;
-$keep{'quarterly'}=4;
+open(MAIL, "|/usr/lib/sendmail techn\@cg.tuwien.ac.at");
+print MAIL "To: Backup-Admin <techn\@cg.tuwien.ac.at>\n";
+print MAIL "Subject: Daily Statistic of Backup\n";
+print MAIL "\n";
 
 load_var_info();
 
-process($root, $keep);
+process($root);
 
-print "Uebersicht ueber die Dateisysteme:\n";
-printf("%-30s  %8s  %8s  %8s  %4s  (%7s)\n", "Mounted on", "Size", "Used", "Avail", "Use%", "Change");
+print MAIL "Uebersicht ueber die Dateisysteme:\n";
+print MAIL sprintf("%-30s  %8s  %8s  %8s  %4s  (%7s)\n", "Mounted on", "Size", "Used", "Avail", "Use%", "Change");
 open(DF, "df -k|");
 while($r=<DF>) {
   if($r =~ /[\t ]+([0-9]+)[\t ]*([0-9]+)[\t ]*([0-9]+)[\t ]*([0-9]+%)[\t ]*(\/backup[A-Za-z0-9\-\/_]+)$/) {
@@ -381,7 +374,7 @@ while($r=<DF>) {
     $last=<$statdf>;
     close($statdf);
 
-    printf("%-30s %8.1fG %8.1fG %8.1fG  %3.0f%%  (%+6.1fG)\n", $5, $1/$gb, $2/$gb, $3/$gb, $4, ($2-$last)/$gb);
+    print MAIL sprintf("%-30s %8.1fG %8.1fG %8.1fG  %3.0f%%  (%+6.1fG)\n", $5, $1/$gb, $2/$gb, $3/$gb, $4, ($2-$last)/$gb);
 
     open($statdf, ">>$5/statistic.df");
     print $statdf sprintf("%s %s\n", $2, strftime("%Y-%m-%d", localtime));
@@ -389,44 +382,45 @@ while($r=<DF>) {
   }
 }
 close(DF);
-print "\n";
+print MAIL "\n";
 
-print "Folgende Backups haben sich relativ am meisten vergroessert:\n";
-@progress_current_list_sort=sort { $progress_current_list{$b} <=> $progress_current_list{$a} } keys %progress_current_list;
-@progress_current_list_sort=splice(@progress_current_list_sort, 0, 20);
-foreach (@progress_current_list_sort) {
-  printf "  %-60s %9.2fM\n", $_, $progress_current_list{$_}/1024;
+print MAIL "Folgende Backups haben sich relativ am meisten vergroessert:\n";
+@progress_last_backup_list_sort=sort { $progress_last_backup_list{$b} <=> $progress_last_backup_list{$a} } keys %progress_last_backup_list;
+@progress_last_backup_list_sort=splice(@progress_last_backup_list_sort, 0, 20);
+foreach (@progress_last_backup_list_sort) {
+  print MAIL sprintf "  %-60s %9.2fM\n", $_, $progress_last_backup_list{$_}/1024;
 }
-print "\n";
+print MAIL "\n";
 
-print "Folgende Backups haben sich absolut am meisten vergroessert:\n";
+print MAIL "Folgende Backups haben sich absolut am meisten vergroessert:\n";
 @progress_total_list_sort=sort { $progress_total_list{$b} <=> $progress_total_list{$a} } keys %progress_total_list;
 @progress_total_list_sort=splice(@progress_total_list_sort, 0, 20);
 foreach (@progress_total_list_sort) {
-  printf "  %-60s %9.2fM\n", $_, $progress_total_list{$_}/1024;
+  print MAIL sprintf "  %-60s %9.2fM\n", $_, $progress_total_list{$_}/1024;
 }
 
-print "\nFolgende Backups wurden seit mind. 3 Tagen nicht vollendet:\n";
+print MAIL "\nFolgende Backups wurden seit mind. 3 Tagen nicht vollendet:\n";
 @backup_not_ended_sort=sort { $backup_not_ended{$b} cmp $backup_not_ended{$a} } keys %backup_not_ended;
 foreach(@backup_not_ended_sort) {
   $backup_not_ended{$_} =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}) /;
-  printf "  %-50s %10s", $_, $1; 
+  print MAIL sprintf "  %-50s %10s", $_, $1; 
 
   if($backup_start{$_} =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}) /) {
-    printf " (start: %10s)", $1;
+    print MAIL sprintf " (start: %10s)", $1;
   }
 
-  print "\n";
+  print MAIL "\n";
 }
 foreach(@backup_not_ended_unk) {
-  printf "  %-50s", $_;
+  print MAIL sprintf "  %-50s", $_;
 
   if($backup_start{$_} =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}) /) {
-    printf "           (start: %10s)", $1;
+    print MAIL sprintf "           (start: %10s)", $1;
   }
 
-  print "\n";
+  print MAIL "\n";
 }
 
 save_var_info("done");
 save_done_info();
+close(MAIL);

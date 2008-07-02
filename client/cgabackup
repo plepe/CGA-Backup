@@ -1,9 +1,9 @@
 #!/usr/bin/perl
 # Versionnummer
-$version="v2.01";
+$version="v2.2";
 
 ###############################################################################
-# CGA-Backup v2                                                               #
+# CGA-Backup v2.2                                                             #
 # (c)'00-02 Stephan Plepelits - plepelits@cg.tuwien.ac.at                     #
 # Vienna University of Technology                                             #
 # Institute of Computer Graphics and Algorithms                               # 
@@ -34,6 +34,7 @@ $version="v2.01";
 # were removed by a static script on the backupserver)
 
 use POSIX qw(strftime);
+use IPC::Open2;
 require 'getopt.pl';
 
 # Fill variables with standard-values.
@@ -249,80 +250,99 @@ sub do_backup() {
   $starttime_format=strftime("%Y-%m-%d %H:%M:%S", @starttime);
 
   # Am Server das Destination-Verzeichnis anlegen und touch the file last_backup_start
-  system("$RSH $conf{host} \"mkdir -p $conf{hostdir}/current ; echo $starttime_format > $conf{hostdir}/last_backup_start\"");
+  open2(*REMOTE_R, *REMOTE_W, "$RSH $conf{host}");
+  # Das Verzeichnis sicherheitshalber anlegen
+  print REMOTE_W "mkdir -p $conf{hostdir}\n";
+  # Wenn es dort bereits ein Backup von heute gibt, dann nicht weitermachen
+  print REMOTE_W "if [ -d \"$conf{hostdir}/$date\" -o -d \"$conf{hostdir}/${date}_incomplete\" ] ; then echo \"1\" ; else echo \"0\" ; fi\n";
+  $done=<REMOTE_R>;
+  if($done ne "1\n") {
+    # Beginnzeit speichern
+    print REMOTE_W "echo $starttime_format > $conf{hostdir}/last_backup_start\n";
+    # Ein Hardlink-Kopie des letzten kompletten Backups anlegen
+    print REMOTE_W "cp -al `readlink -f $conf{hostdir}/last_backup` $conf{hostdir}/${date}_incomplete\n";
+    <STDIN>;
 
-  # Wohin soll die Ausgabe hingeleitet werden? Std.maessig nur ins Logfile
-  $redirect="> $conf{dir}/cgabackup-$date.log 2>> $conf{dir}/cgabackup-$date.log";
-  if($VERBOSE) {
-    $redirect="2>&1 | tee $conf{dir}/cgabackup-$date.log";
-  }
-
-  # Das Backup-Kommando
-  $error=system("$RSYNC -v -e $RSH -a --delete --delete-excluded $cgabackup{BACKUP_STRING} --exclude=/cgabackup*log --backup --backup-dir=../$date $conf{dir}/ $conf{host}:$conf{hostdir}/current $redirect");
-
-  # Die Endzeit speichern.
-  @endtime=localtime;
-  $endtime_format=strftime("%Y-%m-%d %H:%M:%S", @endtime);
-
-  # Das Logfile auf den Server spielen, damit man nachlesen kann, was da war
-  system("$RSYNC -e $conf{rsh} $conf{dir}/cgabackup-$date.log $conf{host}:$conf{hostdir}/");
-
-  # touch the file last_backup_end
-  system("$RSH $conf{host} \"echo $endtime_format > $conf{hostdir}/last_backup_end\"");
-
-  if((($cgabackup{"BACKUP_ERRORMAIL"})&&($error))
-     ||($cgabackup{"BACKUP_SUCCESSMAIL"})) {
-    # Mailverschicken starten. (an und den im .cgabackup angegebenen)
-    print "Sending mail for $conf{dir}.\n" if($opt_d);
-    if(!$opt_m) {
-      # Die Uhrzeit im Subject
-      $mailtime=strftime("%D", @starttime);
-
-      # Mailsenden starten
-      if($cgabackup{'BACKUP_SUCCESSMAIL'}==-1) {
-        open(MAIL, ">/dev/null");
-      }
-      else {
-        open(MAIL, "|$SENDMAIL $cgabackup{'BACKUP_MAILTO'}");
-      }
+    # Wohin soll die Ausgabe hingeleitet werden? Std.maessig nur ins Logfile
+    $redirect="> $conf{dir}/cgabackup-$date.log 2>> $conf{dir}/cgabackup-$date.log";
+    if($VERBOSE) {
+      $redirect="2>&1 | tee $conf{dir}/cgabackup-$date.log";
     }
 
-    print "Sending mail to $cgabackup{'BACKUP_MAILTO'}\n";
-    # To schreiben
-    print MAIL "To: $cgabackup{'BACKUP_MAILTO'}\n";
-    # Subject schreiben
-    print MAIL "Subject: CGA-Backup $version. Backup-Report $mailtime\n\n";
+    # Das Backup-Kommando
+    $error=system("$RSYNC -v -e $RSH -a --delete --delete-excluded $cgabackup{BACKUP_STRING} --exclude=/cgabackup*log $conf{dir}/ $conf{host}:$conf{hostdir}/${date}_incomplete $redirect");
 
-    # Einleitung
-    if($error) {
-      print MAIL "Rsync exited with Error $error.\n\n";
-      print "There was error $error in the backup for $conf{dir}.\n";
-    }
+    # Die Endzeit speichern.
+    @endtime=localtime;
+    $endtime_format=strftime("%Y-%m-%d %H:%M:%S", @endtime);
 
-    # Infos uebers Backup reinschreiben
-    print MAIL "Backup of $HOSTNAME:$conf{dir}\n";
-    print MAIL "Backup-Start: ".strftime("%b %e %H:%M:%S", 
-                                @starttime)."\n";
+    # Das Logfile auf den Server spielen, damit man nachlesen kann, was da war
+    system("$RSYNC -e $conf{rsh} $conf{dir}/cgabackup-$date.log $conf{host}:$conf{hostdir}/");
 
-    # Das Ende des Backups reinschreiben
-    print MAIL "Backup-End: ".strftime("%b %e %H:%M:%S", @endtime)."\n";
-    print MAIL "Backup-Host: $conf{host}\n\n";
+    # touch the file last_backup_end
+    print REMOTE_W "echo $endtime_format > $conf{hostdir}/last_backup_end\n";
+    # Das Verzeichnis umbenennen, damit man erkennt, dass das Backup vollstaendig war
+    print REMOTE_W "mv $conf{hostdir}/${date}_incomplete $conf{hostdir}/$date\n";
+    # Den Link "last_backup" umlegen
+    print REMOTE_W "rm $conf{hostdir}/last_backup ; ln -s $date $conf{hostdir}/last_backup\n";
 
-    print MAIL "Log of Backup:\n";
+    if((($cgabackup{"BACKUP_ERRORMAIL"})&&($error))
+       ||($cgabackup{"BACKUP_SUCCESSMAIL"})) {
+      # Mailverschicken starten. (an und den im .cgabackup angegebenen)
+      print "Sending mail for $conf{dir}.\n" if($opt_d);
+      if(!$opt_m) {
+        # Die Uhrzeit im Subject
+        $mailtime=strftime("%D", @starttime);
+
+        # Mailsenden starten
+        if($cgabackup{'BACKUP_SUCCESSMAIL'}==-1) {
+          open(MAIL, ">/dev/null");
+        }
+        else {
+          open(MAIL, "|$SENDMAIL $cgabackup{'BACKUP_MAILTO'}");
+        }
+      }
+
+      print "Sending mail to $cgabackup{'BACKUP_MAILTO'}\n";
+      # To schreiben
+      print MAIL "To: $cgabackup{'BACKUP_MAILTO'}\n";
+      # Subject schreiben
+      print MAIL "Subject: CGA-Backup $version. Backup-Report $mailtime\n\n";
+
+      # Einleitung
+      if($error) {
+        print MAIL "Rsync exited with Error $error.\n\n";
+        print "There was error $error in the backup for $conf{dir}.\n";
+      }
+
+      # Infos uebers Backup reinschreiben
+      print MAIL "Backup of $HOSTNAME:$conf{dir}\n";
+      print MAIL "Backup-Start: ".strftime("%b %e %H:%M:%S", 
+                                  @starttime)."\n";
+
+      # Das Ende des Backups reinschreiben
+      print MAIL "Backup-End: ".strftime("%b %e %H:%M:%S", @endtime)."\n";
+      print MAIL "Backup-Host: $conf{host}\n\n";
+
+      print MAIL "Log of Backup:\n";
+        
+      # Das Log-File zum lesen oeffnen.
+      open(ERRORLOG, "<$conf{dir}/cgabackup-$date.log");
+
+      # Die Fehlermeldungen aus dem Logfile in Mail und auf stdout schreiben.
+      while($row=<ERRORLOG>) {
+       print MAIL "  $row";
+      }
       
-    # Das Log-File zum lesen oeffnen.
-    open(ERRORLOG, "<$conf{dir}/cgabackup-$date.log");
+      print MAIL "\n";
 
-    # Die Fehlermeldungen aus dem Logfile in Mail und auf stdout schreiben.
-    while($row=<ERRORLOG>) {
-     print MAIL "  $row";
+      # Filehandler schliessen
+      close(MAIL);
     }
-    
-    print MAIL "\n";
-
-    # Filehandler schliessen
-    close(MAIL);
   }
+
+  close(REMOTE_R);
+  close(REMOTE_W);
 
   unlink("$conf{dir}/cgabackup-$date.log");
 }

@@ -6,6 +6,7 @@ $last="/xxx";
 sub month_sub {
   my $str=$_[0];
   my $sub=$_[1];
+  my $i;
 
   for($i=$sub;$i>0;$i--) {
     if($str%100==1) {
@@ -13,6 +14,23 @@ sub month_sub {
     }
     else {
       $str-=1;
+    }
+  }
+
+  return $str;
+}
+
+sub month_add {
+  my $str=$_[0];
+  my $add=$_[1];
+  my $i;
+
+  for($i=$add;$i>0;$i--) {
+    if($str%100==12) {
+      $str=(substr($str, 0, 4)+1)*100+1;
+    }
+    else {
+      $str+=1;
     }
   }
 
@@ -35,56 +53,138 @@ sub process {
     close($CFG);
   }
 
-  # Wenns ein current Verzeichnis gibt, dann sind wir in einem aktiven Backup drin.
-  # Dort entsprechend der Config die alten Daten loeschen
-  if(-d "$p/current") {
+  # Wenns einen last_backup-Link gibt, dann sind wir in einem aktiven
+  # Backup drin. Dort entsprechend der Config die alten Daten loeschen
+  if(-l "$p/last_backup") {
     print "* $p\n";
-    $oldest=strftime("%Y%m%d", localtime(time()-$keep{daily}*86400));
-    $oldest_monthly=month_sub(strftime("%Y%m", localtime(time())), $keep{monthly});
-    $oldest_quarterly=month_sub(strftime("%Y%m", localtime(time())), $keep{quarterly});
 
-    # Alten Mist loswerden
+    # Alle Verzeichnisse einlesen
+    # Vollstaendige Backups in @backup_list
+    # Unvollstaendige Backups in @backup_incomplete_list
+    @backup_list=();
+    @backup_incomplete_list=();
     opendir($DIRS, $p);
     while($r=readdir($DIRS)) {
-      # Daily Verzeichnis loeschen
-      if(($r=~/^[0-9]{8}$/)&&($r<$oldest)) {
-	print "  Loesche $p/$r\n";
-	system("rm -rf $p/$r");
+      if((-d "$p/$r")&&($r =~ /^([0-9]{4}[0-9]{2}[0-9]{2})_incomplete$/)) {
+        push @backup_incomplete_list, $1;
       }
-      # Log-Dateien loeschen
-      elsif(($r=~/^cgabackup-([0-9]{8}).log$/)&&($1<$oldest)) {
-	print "  Loesche $p/$r\n";
-	system("rm $p/$r");
-      }
-      # Monthly/Quarterly loeschen
-      elsif($r=~/^M([0-9]{6})$/) {
-	if((($1%100)%3==1)&&($1>$oldest_quarterly)) {
-	}
-	elsif($1<=$oldest_monthly) {
-	  print "  Loesche $p/$r\n";
-	  system("rm -rf $p/$r");
-	}
+      elsif((-d "$p/$r")&&($r =~ /^([0-9]{4}[0-9]{2}[0-9]{2})$/)) {
+        push @backup_list, $1;
       }
     }
     closedir($DIRS);
+    
+    # Die Listen nach Datum sortieren
+    @backup_list=sort @backup_list;
+    @backup_incomplete_list=sort @backup_incomplete_list;
+    # In den keep_backup_lists steht drin, welche Backups aufgehoben werden
+    %keep_backup_list=();
+    %keep_backup_incomplete_list=();
 
-    # Neues monatliches Backup anlegen, wenn noch keins existiert
-    $month_dir="M".strftime("%Y%m", localtime(time()));
-    if(!-d "$p/$month_dir") {
-      $not_mk_month=0;
-      if(-f "$p/last_backup_start") {
-        @s=stat("$p/last_backup_start");
-	if($s[9]+86400*31<time()) {
-	  $not_mk_month="kein Backup im letzten Monat";
-	}
+    print "Backuplist : ".join(", ", @backup_list)."\n" if($debug);
+    print "IBackuplist: ".join(", ", @backup_incomplete_list)."\n" if($debug);
+
+    # Das aktuellste Backup wird auf jeden Fall aufgehoben
+    $keep_backup_list{$backup_list[@backup_list-1]}=1;
+    # Sollte das letzte inkomplette Backup neuer sein auch aufheben
+    if($backup_incomplete_list[@backup_incomplete_list-1]>$backup_list[@backup_list-1]) {
+      $keep_backup_incomplete_list{$backup_incomplete_list[@backup_incomplete_list-1]}=1;
+    }
+
+    # Unkomplette Backups ausmustern
+    $oldest_incomplete=strftime("%Y%m%d", localtime(time()-$keep{incomplete}*86400));
+    foreach(@backup_incomplete_list) {
+#      print "  $_ $oldest_incomplete\n";
+      if($_>=$oldest_incomplete) {
+        $keep_backup_incomplete_list{$_}=1;
+      }
+    }
+
+    # Die aktuellsten Backups aufheben
+    $oldest=strftime("%Y%m%d", localtime(time()-$keep{daily}*86400));
+    foreach(@backup_list) {
+      #print "  $_ $oldest\n";
+      if($_>=$oldest) {
+        $keep_backup_list{$_}=1;
+      }
+    }
+
+    # Von den letzten n Wochen das erste Backup aufheben
+    $monday_diff=-3;
+    while(strftime("%u", localtime(time()-$monday_diff*86400)) ne "1") {
+      $monday_diff++;
+    }
+    for($i=0; $i<=$keep{weekly}; $i++) {
+      $monday=strftime("%Y%m%d", localtime(time()-($i*7+$monday_diff)*86400));
+      $sunday=strftime("%Y%m%d", localtime(time()-($i*7+$monday_diff-6)*86400));
+
+      @tmp=();
+      foreach(@backup_list) {
+        if(($monday <= $_)&&($_ <= $sunday)) {
+          push @tmp, $_;
+        }
+      }
+      if(@tmp) {
+        $keep_backup_list{$tmp[0]}=1;
       }
 
-      if($not_mk_month) {
-	print "  Lege $p/$month_dir nicht an: $not_mk_month\n";
+      #print "$i -> $monday-$sunday: ".join(", ", @tmp)."\n";
+    }
+
+    # Von den letzten n Monaten das erste Backup aufheben
+    for($i=0; $i<=$keep{monthly}; $i++) {
+      $month=month_sub(strftime("%Y%m", localtime(time())), $i);
+      @tmp=();
+      foreach(@backup_list) {
+        if($_=~/^$month/) {
+          push @tmp, $_;
+        }
       }
-      else {
-	print "  Lege $p/$month_dir an\n";
-	system("cp -al $p/current $p/$month_dir");
+      if(@tmp) {
+        $keep_backup_list{$tmp[0]}=1;
+      }
+
+      #print "$i -> $month: ".join(", ", @tmp)."\n";
+    }
+
+    # Von den letzten n Quartalen das erste Backup aufheben
+    for($i=0; $i<=$keep{quarterly}; $i++) {
+      $month1=month_sub(strftime("%Y%m", localtime(time())), $i*3);
+      while(($month1%100)%3!=1) {
+        $month1=month_sub($month1, 1);
+      }
+      $month2=month_add($month1, 1);
+      $month3=month_add($month1, 2);
+
+      @tmp=();
+      foreach(@backup_list) {
+        if(($_=~/^$month1/)||($_=~/^$month2/)||($_=~/^$month3/)) {
+          push @tmp, $_;
+        }
+      }
+      if(@tmp) {
+        $keep_backup_list{$tmp[0]}=1;
+      }
+
+      #print "$i -> $month1-$month2: ".join(", ", @tmp)."\n";
+    }
+
+    print "Keep Backuplist : ".join(", ", keys %keep_backup_list)."\n" if($debug);
+    print "Keep IBackuplist: ".join(", ", keys %keep_backup_incomplete_list)."\n" if($debug);
+
+    # Die Backups, die nicht in den Keep-Listen sind, loeschen
+    foreach(@backup_list) {
+      if(!$keep_backup_list{$_}) {
+	print "  Loesche $p/$_\n";
+	system("rm -rf $p/$_");
+	system("rm -f $p/cgabackup-$_.log");
+      }
+    }
+    foreach(@backup_incomplete_list) {
+      if(!$keep_backup_incomplete_list{$_}) {
+	print "  Loesche $p/${_}_incomplete\n";
+	system("rm -rf $p/${_}_incomplete");
+	system("rm -f $p/cgabackup-$_.log");
       }
     }
   }
@@ -99,7 +199,15 @@ sub process {
   }
 }
 
-$keep{'daily'}=7;
+# Die letzten n Tage immer aufheben
+$keep{'daily'}=14;
+# Die imcomplete Backups der letzten n Tage aufheben
+$keep{'incomplete'}=7;
+# Jeweils das erste der Backups der letzten n Wochen aufheben
+$keep{'weekly'}=5;
+# Jeweils das erste Backup der letzten n Monate aufheben
 $keep{'monthly'}=6;
-$keep{'quarterly'}=12;
-process("/backup-cg", $keep);
+# Jeweils das erste Backup der letzten n Quartale aufheben
+$keep{'quarterly'}=5;
+
+process("/usr/people/skunk/tmp/backup", $keep);
