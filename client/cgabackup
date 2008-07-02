@@ -34,6 +34,7 @@ $version="v2.2";
 # were removed by a static script on the backupserver)
 
 use POSIX qw(strftime);
+use FileHandle;
 use IPC::Open2;
 require 'getopt.pl';
 
@@ -249,8 +250,16 @@ sub do_backup() {
   @starttime=localtime;
   $starttime_format=strftime("%Y-%m-%d %H:%M:%S", @starttime);
 
+  if($RSH =~ /ssh/) {
+    $login_param="-T";
+  }
+  elsif($RSH =~ /rsh/) {
+    $login_param="sh";
+  }
+
+
   # Am Server das Destination-Verzeichnis anlegen und touch the file last_backup_start
-  open2(*REMOTE_R, *REMOTE_W, "$RSH $conf{host}");
+  open2(*REMOTE_R, *REMOTE_W, "$RSH $conf{host} $login_param");
   # Das Verzeichnis sicherheitshalber anlegen
   print REMOTE_W "mkdir -p $conf{hostdir}\n";
   # Wenn es dort bereits ein Backup von heute gibt, dann nicht weitermachen
@@ -260,7 +269,7 @@ sub do_backup() {
     # Beginnzeit speichern
     print REMOTE_W "echo $starttime_format > $conf{hostdir}/last_backup_start\n";
     # Ein Hardlink-Kopie des letzten kompletten Backups anlegen
-    print REMOTE_W "cp -al `readlink -f $conf{hostdir}/last_backup` $conf{hostdir}/${date}_incomplete\n";
+    print REMOTE_W "cp -al $conf{hostdir}/`ls $conf{hostdir} | egrep \"^[0-9]{8}\$\" | sort | tail -n1` $conf{hostdir}/${date}_incomplete\n";
 
     # Wohin soll die Ausgabe hingeleitet werden? Std.maessig nur ins Logfile
     $redirect="> $conf{dir}/cgabackup-$date.log 2>> $conf{dir}/cgabackup-$date.log";
@@ -269,6 +278,7 @@ sub do_backup() {
     }
 
     # Das Backup-Kommando
+    print "$RSYNC -v -e $RSH -a --delete --delete-excluded $cgabackup{BACKUP_STRING} --exclude=/cgabackup*log $conf{dir}/ $conf{host}:$conf{hostdir}/${date}_incomplete $redirect\n";
     $error=system("$RSYNC -v -e $RSH -a --delete --delete-excluded $cgabackup{BACKUP_STRING} --exclude=/cgabackup*log $conf{dir}/ $conf{host}:$conf{hostdir}/${date}_incomplete $redirect");
 
     # Die Endzeit speichern.
@@ -338,6 +348,9 @@ sub do_backup() {
       # Filehandler schliessen
       close(MAIL);
     }
+  }
+  else {
+    print "Backup already done/working\n";
   }
 
   close(REMOTE_R);
