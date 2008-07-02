@@ -5,14 +5,21 @@ sub process {
   my $p=$_[0];
   my $DIRS;
 
-  if(-d "$p/current") {
+  if(-l "$p/last_backup") {
+    print "Done: $p\n";
+  }
+  elsif(-d "$p/current") {
+    print "Processing: $p\n";
     @s=stat("$p/current");
-    $current=strftime("%Y%m%d", localtime($s[9]))."\n";
+    $current=strftime("%Y%m%d", localtime($s[9]));
 
-    system("cd $p ; mmv \"2008*\" \"old_2008#1\"");
-    system("cd $p ; mmv \"M200*\" \"200#1\"");
-    system("cd $p ; mv current $current ; ln -s $current last_backup");
-    system("cd $p ; mv statistic.current.progress statistic.last_backup.progress");
+    chdir($p);
+    system("pwd");
+    system("mmv -r \"200*\" \"old_200#1\"\n");
+    system("mmv -r \"M200*\" \"200#1\\01\"");
+    system("mv current $current");
+    system("ln -s $current last_backup");
+    system("mv statistic.current.progress statistic.last_backup.progress");
   }
   else {
     opendir($DIRS, $p);
