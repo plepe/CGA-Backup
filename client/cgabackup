@@ -269,7 +269,7 @@ sub do_backup() {
     # Beginnzeit speichern
     print REMOTE_W "echo $starttime_format > $conf{hostdir}/last_backup_start\n";
     # Ein Hardlink-Kopie des letzten kompletten Backups anlegen
-    print REMOTE_W "cp -al `find $conf{hostdir} -maxdepth 1 -type d | sort | grep -v incomplete | tail -n1` $conf{hostdir}/${date}_incomplete\n";
+    print REMOTE_W "cp --archive --link `find $conf{hostdir} -maxdepth 1 -type d | sort | grep -v incomplete | grep -v old | tail -n1` $conf{hostdir}/${date}_incomplete\n";
 
     # Wohin soll die Ausgabe hingeleitet werden? Std.maessig nur ins Logfile
     $redirect="> $conf{dir}/cgabackup-$date.log 2>> $conf{dir}/cgabackup-$date.log";
