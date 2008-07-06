@@ -1,0 +1,52 @@
+#!/usr/bin/perl
+
+$backup=$ARGV[0];
+$date=$ARGV[1];
+
+open(DEBUG, ">/$backup/log");
+print DEBUG "backup: $backup date: $date\n";
+
+# Das Verzeichnis sicherheitshalber anlegen
+system("mkdir -p $backup");
+
+# Wenn es dort bereits ein Backup von heute gibt, dann nicht weitermachen
+if((-d "$backup/$date")||(-d "$backup/${date}_incomplete")) {
+  print "backup already exists\n";
+  exit;
+}
+
+# Letztes Backup eruieren
+$last_backup=readlink("$backup/last_backup");
+print DEBUG "last_backup: $last_backup\n";
+@list=();
+if(!-d "$backup/$last_backup") {
+  opendir(DIR, "$backup");
+  while($f=readdir(DIR)) {
+    if($f =~ /^[0-9]{8}$/) {
+      push(@list, $f);
+    }
+  }
+
+  @list=sort(@list);
+  $last_backup=$list[@list-1];
+  print DEBUG "last_backup2: $last_backup\n";
+}
+
+# Eine Hardlink-Kopie des letzten kompletten Backups anlegen
+if($last_backup) {
+  $result=system("cp --verbose --archive --link $backup/$last_backup $backup/${date}_incomplete >> /$backup/log 2>> /$backup/log");
+
+  if($result!=0) {
+    print "error when copying: $result (device full?)\n";
+    print DEBUG "result vom copy: $result\n";
+
+    # Kopie wieder loeschen
+    system("rm -r $backup/${date}_incomplete");
+
+    exit;
+  }
+}
+
+print "ready\n";
+
+close(DEBUG);

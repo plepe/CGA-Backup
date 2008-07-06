@@ -4,7 +4,7 @@ use POSIX qw(strftime);
 $gb=1024*1024;
 
 $var_file="/var/run/cga_build_statistic.state";
-$root="/backup-cg/";
+$root="/backup-cg";
 $debug=0;
 
 sub save_var_info {
@@ -212,6 +212,7 @@ sub process {
   my %stat_sum;
   my %stat_modes;
 
+  print "$p\n";
   # Wenns einen last_backup-Link gibt, dann sind wir in einem aktiven Backup drin.
   if(-l "$p/last_backup") {
     #print "* $p\n";
@@ -219,7 +220,7 @@ sub process {
     if(!$done{$p}) {
       opendir($DIRS, $p);
       while($r=readdir($DIRS)) {
-	elsif($r =~ /^[0-9]{8}/) {
+	if($r =~ /^[0-9]{8}/) {
 	  push @list, $r;
 	}
       }

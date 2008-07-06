@@ -3,7 +3,7 @@
 sub find_root {
   my $p=$_[0];
 
-  return $p if(-d "$p/current");
+  return $p if(-l "$p/last_backup");
 
   $p =~ /^(.*)\/([^\/]*)/;
   return 0 if($1 eq "");

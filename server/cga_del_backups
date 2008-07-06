@@ -176,15 +176,15 @@ sub process {
     foreach(@backup_list) {
       if(!$keep_backup_list{$_}) {
 	print "  Loesche $p/$_\n";
-#	system("rm -rf $p/$_");
-#	system("rm -f $p/cgabackup-$_.log");
+	system("rm -rf $p/$_");
+	system("rm -f $p/cgabackup-$_.log");
       }
     }
     foreach(@backup_incomplete_list) {
       if(!$keep_backup_incomplete_list{$_}) {
 	print "  Loesche $p/${_}_incomplete\n";
-#	system("rm -rf $p/${_}_incomplete");
-#	system("rm -f $p/cgabackup-$_.log");
+	system("rm -rf $p/${_}_incomplete");
+	system("rm -f $p/cgabackup-$_.log");
       }
     }
   }
