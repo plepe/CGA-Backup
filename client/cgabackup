@@ -260,16 +260,37 @@ sub do_backup() {
 
   # Am Server das Destination-Verzeichnis anlegen und touch the file last_backup_start
   open2(*REMOTE_R, *REMOTE_W, "$RSH $conf{host} $login_param");
-  # Das Verzeichnis sicherheitshalber anlegen
-  print REMOTE_W "mkdir -p $conf{hostdir}\n";
-  # Wenn es dort bereits ein Backup von heute gibt, dann nicht weitermachen
-  print REMOTE_W "if [ -d \"$conf{hostdir}/$date\" -o -d \"$conf{hostdir}/${date}_incomplete\" ] ; then echo \"1\" ; else echo \"0\" ; fi\n";
+  # Beginnzeit speichern
+  print REMOTE_W "echo $starttime_format > $conf{hostdir}/last_backup_start\n";
+
+  # Pre-Backup aufrufen
+  print REMOTE_W "/usr/local/bin/cga_pre_backup $conf{hostdir} $date\n";
+
+  # Warten bis fertig
   $done=<REMOTE_R>;
-  if($done ne "1\n") {
-    # Beginnzeit speichern
-    print REMOTE_W "echo $starttime_format > $conf{hostdir}/last_backup_start\n";
-    # Ein Hardlink-Kopie des letzten kompletten Backups anlegen
-    print REMOTE_W "cp --archive --link `find $conf{hostdir} -maxdepth 1 -type d | sort | grep -v incomplete | grep -v old | tail -n1` $conf{hostdir}/${date}_incomplete\n";
+  chop($done);
+  
+  if($done ne "ready") {
+    print "error preparing backup: $done\n";
+  }
+  else {
+#exit;
+#  # Das Verzeichnis sicherheitshalber anlegen
+#  print REMOTE_W "mkdir -p $conf{hostdir}\n";
+#  # Wenn es dort bereits ein Backup von heute gibt, dann nicht weitermachen
+#  print REMOTE_W "if [ -d \"$conf{hostdir}/$date\" -o -d \"$conf{hostdir}/${date}_incomplete\" ] ; then echo \"1\" ; else echo \"0\" ; fi\n";
+#  $done=<REMOTE_R>;
+#  if($done ne "1\n") {
+#
+#    # Warten bis fertig
+#    $done=<REMOTE_R>;
+#
+#    # Ein Hardlink-Kopie des letzten kompletten Backups anlegen
+#    print REMOTE_W "cp --verbose --archive --link `find $conf{hostdir} -maxdepth 1 -type d | sort | grep -v incomplete | grep -v old | tail -n1` $conf{hostdir}/${date}_incomplete > $conf{hostdir}/cp.log 2> $conf{hostdir}/cp.log\n";
+#
+#  print REMOTE_W "echo \"finished copying\"\n";
+#  $done=<REMOTE_R>;
+#  print "$done";
 
     # Wohin soll die Ausgabe hingeleitet werden? Std.maessig nur ins Logfile
     $redirect="> $conf{dir}/cgabackup-$date.log 2>> $conf{dir}/cgabackup-$date.log";
@@ -278,8 +299,8 @@ sub do_backup() {
     }
 
     # Das Backup-Kommando
-    print "$RSYNC -v -e $RSH -a --delete --delete-excluded $cgabackup{BACKUP_STRING} --exclude=/cgabackup*log $conf{dir}/ $conf{host}:$conf{hostdir}/${date}_incomplete $redirect\n";
     $error=system("$RSYNC -v -e $RSH -a --delete --delete-excluded $cgabackup{BACKUP_STRING} --exclude=/cgabackup*log $conf{dir}/ $conf{host}:$conf{hostdir}/${date}_incomplete $redirect");
+    #print "result vom rsync: $error errno is $!\n";
 
     # Die Endzeit speichern.
     @endtime=localtime;
@@ -290,10 +311,13 @@ sub do_backup() {
 
     # touch the file last_backup_end
     print REMOTE_W "echo $endtime_format > $conf{hostdir}/last_backup_end\n";
+
+    print REMOTE_W "/usr/local/bin/cga_post_backup $conf{hostdir} $date\n";
+    #mv $conf{hostdir}/${date}_incomplete $conf{hostdir}/$date\n";
     # Das Verzeichnis umbenennen, damit man erkennt, dass das Backup vollstaendig war
-    print REMOTE_W "mv $conf{hostdir}/${date}_incomplete $conf{hostdir}/$date\n";
-    # Den Link "last_backup" umlegen
-    print REMOTE_W "rm $conf{hostdir}/last_backup ; ln -s $date $conf{hostdir}/last_backup\n";
+#    print REMOTE_W "mv $conf{hostdir}/${date}_incomplete $conf{hostdir}/$date\n";
+#    # Den Link "last_backup" umlegen
+#    print REMOTE_W "rm $conf{hostdir}/last_backup ; ln -s $date $conf{hostdir}/last_backup\n";
 
     if((($cgabackup{"BACKUP_ERRORMAIL"})&&($error))
        ||($cgabackup{"BACKUP_SUCCESSMAIL"})) {
@@ -348,9 +372,6 @@ sub do_backup() {
       # Filehandler schliessen
       close(MAIL);
     }
-  }
-  else {
-    print "Backup already done/working\n";
   }
 
   close(REMOTE_R);
