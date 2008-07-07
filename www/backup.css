@@ -28,3 +28,9 @@ td.h_sizeinfo {
   border: 1px solid grey;
   text-weight: bold;
 }
+.dirlist_border {
+  border: 3px solid #909090;
+}
+.dirlist_header {
+  background-color: #909090;
+}

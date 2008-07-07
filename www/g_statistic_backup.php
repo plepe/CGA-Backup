@@ -6,14 +6,14 @@ include "date.php";
 
 $main_path=$_REQUEST["main_path"];
 
-$progress_current=array();
+$progress_last_backup=array();
 $progress_total=array();
 
-$stat=fopen("$main_path/statistic.current.progress", "r");
+$stat=fopen("$main_path/statistic.last_backup.progress", "r");
 while($s=fgets($stat, 1024)) {
   $x=explode(" ", $s);
   $x[1]=substr($x[1], 0, 4)."-".substr($x[1], 4, 2)."-".substr($x[1], 6, 2);
-  $progress_current[$x[1]]=$x[0];
+  $progress_last_backup[$x[1]]=$x[0];
 }
 fclose($stat);
 
@@ -29,12 +29,12 @@ $x=array_values($progress_total);
 rsort($x);
 $highest_total=$x[0];
 
-$x=array_values($progress_current);
+$x=array_values($progress_last_backup);
 rsort($x);
-$highest_current=$x[0];
+$highest_last_backup=$x[0];
 
-if($highest_current>$highest_total)
-  $highest=$highest_current;
+if($highest_last_backup>$highest_total)
+  $highest=$highest_last_backup;
 else
   $highest=$highest_total;
 
@@ -46,11 +46,11 @@ $day_length=2;
 
 $im = imagecreate(810, 330);
 $col_back=imagecolorallocate($im, 255, 255, 255);
-$col_current=imagecolorallocate($im, 255, 0, 0);
+$col_last_backup=imagecolorallocate($im, 255, 0, 0);
 $col_total=imagecolorallocate($im, 0, 0, 255);
 $col_coord=imagecolorallocate($im, 0, 0, 0);
 $col_grid=imagecolorallocate($im, 200, 200, 200);
-$last_current=0;
+$last_last_backup=0;
 
 imageline($im, $xpos-$days*$day_length, 0, $xpos-$days*$day_length, $ypos, $col_coord);
 imageline($im, $xpos-$days*$day_length, $ypos, $xpos, $ypos, $col_coord);
@@ -105,7 +105,7 @@ for($i=1; $i<=3; $i++) {
   imagettftext($im, 8, 0, $xpos-$days*$day_length-50, $y+3, $col_coord, "DejaVuSans", ($unitval*$i)." ".$units[$unitindex]);
 }
 
-unset($last_current);
+unset($last_last_backup);
 unset($last_total);
 
 for($i=-364;$i<=0;$i++) {
@@ -117,13 +117,13 @@ for($i=-364;$i<=0;$i++) {
     imagettftext($im, 8, 0, $xpos+($i)*$day_length+2, $ypos+10, $col_coord, "DejaVuSans", substr($d, 0, 7));
   }
  
-  if($progress_current[$d]) {
+  if($progress_last_backup[$d]) {
     $x=$xpos+$i*$day_length;
-    $y=$ypos-($progress_current[$d]/$highest)*$height;
-    if($last_current) {
-      imageline($im, $last_current[0], $last_current[1], $x, $y, $col_current);
+    $y=$ypos-($progress_last_backup[$d]/$highest)*$height;
+    if($last_last_backup) {
+      imageline($im, $last_last_backup[0], $last_last_backup[1], $x, $y, $col_last_backup);
     }
-    $last_current=array($x, $y);
+    $last_last_backup=array($x, $y);
   }
 
   if($progress_total[$d]) {

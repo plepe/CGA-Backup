@@ -1,33 +1,95 @@
 #!/usr/bin/perl
 
+sub bakcmp {
+  $a=~/([0-9]{8})([a-z]?)/;
+  $a_d=$1; $a_k=$2;
+  $b=~/([0-9]{8})([a-z]?)/;
+  $b_d=$1; $b_k=$2;
+  if($b_d eq $a_d) {
+    $b_k cmp $a_k;
+  }
+  else {
+    $a <=> $b;
+  }
+}
+
 $backup=$ARGV[0];
 $date=$ARGV[1];
 
+# Wenn derzeit ein Backup gemacht wird abbrechen
+if(-f "$backup/lock") {
+  open(LOCK, "<$backup/lock");
+  $pid=<LOCK>;
+  chop($pid);
+  if(-d "/proc/$pid") {
+    print "backup already working\n";
+    exit;
+  }
+}
+
+# Kein Backup -> Locken fuer andere Prozesse
+open(LOCK, ">$backup/lock");
+print LOCK getppid()."\n";
+close(LOCK);
+
 open(DEBUG, ">/$backup/log");
-print DEBUG "backup: $backup date: $date\n";
 
 # Das Verzeichnis sicherheitshalber anlegen
 system("mkdir -p $backup");
 
-# Wenn es dort bereits ein Backup von heute gibt, dann nicht weitermachen
+# Wenn es dort bereits ein Backup von heute gibt, dann ein anderes Datum waehlen
 if((-d "$backup/$date")||(-d "$backup/${date}_incomplete")) {
-  print "backup already exists\n";
-  exit;
+  opendir(DIR, $backup);
+  @bak_list=();
+  while($r=readdir(DIR)) {
+    if($r=~/^([0-9]{8})[a-z]?(_incomplete)?$/) {
+      if($1 eq $date) {
+	push @bak_list, $r;
+      }
+    }
+  }
+  closedir(DIR);
+
+  @bak_list=sort {$b cmp $a} @bak_list;
+  foreach $bak_name (@bak_list) {
+    $bak_name=~/^([0-9]{8})([a-z]?)(_incomplete)?$/;
+    $bak_date=$1; $bak_key=$2; $bak_inc=$3;
+    $k=$bak_key;
+    if($k eq "") {
+      $k='a';
+    }
+    else {
+      $k=chr(ord($2)+1);
+    }
+    $newdate="$bak_date$k";
+    system("mv $backup/$bak_name $backup/$newdate$bak_inc");
+    system("mv $backup/cgabackup-$bak_date$bak_key.log $backup/cgabackup-$newdate.log")
+      if(-f "$backup/cgabackup-$bak_date$bak_key.log");
+  }
+
+  system("mv $backup/$date $backup/${date}a")
+    if(-d "$backup/$date");
+  system("mv $backup/${date}_incomplete $backup/${date}a_incomplete")
+    if(-d "$backup/${date}_incomplete");
+  system("mv $backup/cgabackup-$date.log $backup/cgabackup-${date}a.log")
+    if(-f "$backup/cgabackup-$date.log");
 }
+
+print DEBUG "backup: $backup date: $date\n";
 
 # Letztes Backup eruieren
 $last_backup=readlink("$backup/last_backup");
 print DEBUG "last_backup: $last_backup\n";
 @list=();
-if(!-d "$backup/$last_backup") {
+if(!-l "$backup/$last_backup") {
   opendir(DIR, "$backup");
   while($f=readdir(DIR)) {
-    if($f =~ /^[0-9]{8}$/) {
+    if($f =~ /^[0-9]{8}[a-z]?$/) {
       push(@list, $f);
     }
   }
 
-  @list=sort(@list);
+  @list=sort bakcmp @list;
   $last_backup=$list[@list-1];
   print DEBUG "last_backup2: $last_backup\n";
 }

@@ -16,9 +16,10 @@ int main(int argc, char **argv) {
     exit(0);
   }
 
-  dir=opendir(argv[1]);
-  sprintf(filename, "%s", argv[1]);
-  if(lstat(filename, &statp)==-1)
+//  dir=opendir(argv[1]);
+//  sprintf(filename, "%s", argv[1]);
+  if(lstat(argv[1], &statp)==-1)
+    printf("0\n");
+  else
     printf("1\n");
-  printf("0\n");
 }

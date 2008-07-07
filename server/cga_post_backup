@@ -6,3 +6,5 @@ $date=$ARGV[1];
 system("mv $backup/${date}_incomplete $backup/$date");
 unlink("$backup/last_backup");
 symlink("$date", "$backup/last_backup");
+
+unlink("$backup/lock");

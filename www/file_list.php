@@ -10,89 +10,64 @@ print "CGA-Backup :: User $user :: $pathlist[$main_path]<br><hr>\n";
 print "<a href='index.php'>Go to selection of backups</a><br>\n";
 print "<a href='show_backup.php?main_path=$main_path'>Go to overview of backup</a><br>\n";
 
-if($_REQUEST[show_hidden]) {
-  $_SESSION[show_hidden]=($_REQUEST[show_hidden]=="yes"?1:0);
+if($_REQUEST[set_show]) {
+  $_SESSION[show_hidden]=($_REQUEST[show_hidden]=="on"?1:0);
   session_register("show_hidden");
-}
 
-if($_REQUEST[show_duplicate]) {
-  $_SESSION[show_duplicate]=($_REQUEST[show_duplicate]=="yes"?1:0);
+  $_SESSION[show_duplicate]=($_REQUEST[show_duplicate]=="on"?1:0);
   session_register("show_duplicate");
 }
 
 $dirlist=array();
 $filelist=array();
+$bak_list=array();
 
 $path=stripslashes($path);
 
+# Fuer alle Backups durchgehen
 $d=opendir("$main_path");
 while($dir=readdir($d)) {
   if(is_dir("$main_path/$dir")) {
-    if((substr($dir, 0, 1)!=".")) {
+    if(eregi("^[0-9]{8}[a-z]?", $dir)) {
       $bak_list[]="$dir";
-#      if(is_dir("$main_path/$dir/$path/")) {
 
-	$sd=popen("./rootls \"$main_path/$dir/$path\"", "r");
-	while($sdir=fgets($sd, 1024)) {
-	  $stat=explode("\t", $sdir);
+      # Verzeichnislisting im konkreten Verzeichnis durchgehen
+      $sd=popen("./rootls \"$main_path/$dir/$path\"", "r");
+      while($sdir=fgets($sd, 1024)) {
+	$stat=explode("\t", $sdir);
 //	  print "$stat[0]\t";
-	  switch($stat[1]&0170000) {
-	    case 16384:
-	      $dirlist["$stat[0]"][]=$dir;
-	      break;
-	    case 32768:
-	      $filelist["$stat[0]"][$dir]=$stat;
-	      break;
-	    case 40960:
-	      break;
-	    default:
-	      print "unknown filetype";
-	  }
-	  print "\n";
+	switch($stat[1]&0170000) {
+	  case 16384:
+	    $dirlist["$stat[0]"][]=$dir;
+	    break;
+	  case 32768:
+	    $filelist["$stat[0]"][$dir]=$stat;
+	    break;
+	  case 40960:
+	    break;
+	  default:
+	    print "unknown filetype";
 	}
-
-/*
-        $sd=opendir("$main_path/$dir/$path");
-        while($sdir=readdir($sd)) {
-  	if(($sdir!=".")&&($sdir!="..")) {
-  	  if(is_dir("$main_path/$dir/$path/$sdir"))
-  	  else
-  	    $filelist[$sdir][]=$dir;
-  	}
-        }
-	*/
+	print "\n";
       }
-#    }
+    }
   }
 }
+rsort($bak_list);
       
-print "<p>\n";
-if($_SESSION[show_hidden]) {
-  print "<a href='file_list.php?main_path=$main_path&path=$path&show_hidden=no'>Don't show hidden files</a><br>\n";
-}
-else {
-  print "<a href='file_list.php?main_path=$main_path&path=$path&show_hidden=yes'>Show hidden files</a><br>\n";
-}
+print "<form action='file_list.php' method='get'>\n";
+print "Show: ";
+print "<input type='hidden' name='main_path' value='$main_path'>\n";
+print "<input type='hidden' name='path' value='$path'>\n";
+print "<input type='hidden' name='set_show' value='1'>\n";
+print "<input type='checkbox' name='show_hidden' ".($_SESSION[show_hidden]?"checked='checked' ":"")." onChange='submit()'> Hidden files";
+print "<input type='checkbox' name='show_duplicate' ".($_SESSION[show_duplicate]?"checked='checked' ":"")." onChange='submit()'> Duplicate files";
+print "</form>\n";
 
-if($_SESSION[show_duplicate]) {
-  print "<a href='file_list.php?main_path=$main_path&path=$path&show_duplicate=no'>Don't show duplicate backups of a file</a><br>\n";
-}
-else {
-  print "<a href='file_list.php?main_path=$main_path&path=$path&show_duplicate=yes'>Show duplicate backups of a file</a><br>\n";
-}
-
-print "Download this directory:\n";
-foreach($bak_list as $b) {
-  $p=popen("./rootisdir $main_path/$b/$path/", "r");
-  $isdir=fgets($p, 1024);
-  pclose($p);
-  if($isdir) {
-    print "<a href='download_directory.php/backup.tgz?main_path=$main_path&path=$path&version=$b'>$b</a>\n";
-  } 
-}
-
+print "<div class='dirlist_border'>";
+print "<div class='dirlist_header'>";
 $arpath=explode("/", $path);
-print "<p><b>Path: <a href='file_list.php?main_path=$main_path&path=/'>root</a>/";
+print "<b>Path: <a href='file_list.php?main_path=$main_path&path=/'>root</a>/";
 $sump="";
 foreach($arpath as $p) {
   if($p!="") {
@@ -102,20 +77,50 @@ foreach($arpath as $p) {
 }
 print "</b>\n";
 
-print "<h4>List of directories</h4>\n";
+$print_list=array();
+foreach($bak_list as $b) {
+  $p=popen("./rootisdir \"$main_path/$b/$path/\"", "r");
+  $isdir=fgets($p, 1024);
+  pclose($p);
+  if($isdir=="1\n") {
+    $print_list[]="<a href='download_directory.php/backup.tgz?main_path=$main_path&path=$path&version=$b'>$b</a>";
+  } 
+}
+print " (Download: ";
+print implode(" ", $print_list);
+print ")";
+print "</div>\n";
+
+print "<div class='dirlist_body'>\n";
+print "<table border='0' cellspacing='0' cellpadding='2' width='100%'>\n";
 ksort($dirlist);
 foreach($dirlist as $dir=>$data) {
   if(($dir!=".")&&($dir!=".."))
-    if(($_SESSION[show_hidden])||(substr($dir, 0, 1)!="."))
+    if(($_SESSION[show_hidden])||(substr($dir, 0, 1)!=".")) {
+      $r=($r+1)%2;
+      print "<tr class='row$r'><td valign='top'><b>";
+
       print "<a href='file_list.php?main_path=$main_path&path=".rawurlencode("$path/$dir/")."'>$dir</a>\n";
-      //print "<a href='file_list.php?main_path=$main_path&path=".
-      //rawurlencode("$path/$dir")."'>$dir</a>\n";
+
+      print "<td>\n";
+      if($_SESSION[show_duplicate]) {
+	print "<table>\n";
+	usort($data, bakcmp);
+	foreach($data as $dir) {
+	  print "<tr><td>$dir</td></tr>\n";
+	}
+	print "</table>\n";
+      }
+      else {
+	print "directory";
+      }
+      print "</td>\n";
+      print "</tr>\n";
+    }
 }
 
-print "<h4>List of files</h4>\n";
 ksort($filelist);
 
-print "<table>\n";
 foreach($filelist as $file=>$baklist) {
   if(($_SESSION[show_hidden])||(substr($file, 0, 1)!=".")) {
     $r=($r+1)%2;
@@ -126,18 +131,12 @@ foreach($filelist as $file=>$baklist) {
 
     $list=array(array(), array(), array());
     foreach($baklist as $day=>$b) {
-      if(eregi("^[0-9]{8}$", $day)) {
+      if(eregi("^[0-9]{8}[a-z]?$", $day)) {
 	$list[1][$day]=$b;
-      }
-      elseif(eregi("^M[0-9]{6}$", $day)) {
-	$list[2][$day]=$b;
-      }
-      elseif($day=="current") {
-	$list[0][$day]=$b;
       }
     }
     for($i=0;$i<3;$i++) {
-      krsort($list[$i]);
+      uksort($list[$i], bakcmp);
     }
     $baklist=$list[0]+$list[1]+$list[2];
 
@@ -162,3 +161,4 @@ foreach($filelist as $file=>$baklist) {
   }
 }
 print "</table>\n";
+print "</div>\n";

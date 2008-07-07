@@ -78,4 +78,14 @@ if(($main_path)&&(in_array($main_path, array_keys($pathlist))===false)) {
   exit;
 }
  
+function bakcmp($a, $b) {
+  eregi("([0-9]{8})([a-z]?)", $a, $a_);
+  eregi("([0-9]{8})([a-z]?)", $b, $b_);
+
+  if($a_[1]==$b_[1])
+    return $a_[2]>$b_[2];
+  else
+    return $a<$b;
+}
+
 ?>

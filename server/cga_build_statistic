@@ -272,16 +272,20 @@ sub process {
 
       if($new_backup) {
         # Statistic generieren - all
+        print ("cd $p ; du -skl ".(join(" ", @list))."\n");
+        print ("cd $p ; du -skc ".(join(" ", reverse(@list)))."\n");
+        print ("cd $p ; du -skc ".(join(" ", @list))."\n");
+
         system("echo '[fullsize]' > $p/statistic.new");
         system("cd $p ; du -skl ".(join(" ", @list)).
                 " >> $p/statistic.new 2> /dev/null");
         system("echo >> $p/statistic.new");
         system("echo '[realsize]' >> $p/statistic.new");
-        system("cd $p ; du -skc ".(join(" ", reverse(@list_d))).
+        system("cd $p ; du -skc ".(join(" ", reverse(@list))).
                 " >> $p/statistic.new 2> /dev/null");
         system("echo >> $p/statistic.new");
         system("echo '[backrealsize]' >> $p/statistic.new");
-        system("cd $p ; du -skc ".(join(" ", @list_m)).
+        system("cd $p ; du -skc ".(join(" ", @list)).
                 " >> $p/statistic.new 2> /dev/null");
         system("mv $p/statistic.new $p/statistic");
       }
