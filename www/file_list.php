@@ -16,6 +16,8 @@ if($_REQUEST[set_show]) {
 
   $_SESSION[show_duplicate]=($_REQUEST[show_duplicate]=="on"?1:0);
   session_register("show_duplicate");
+
+  $_SESSION[show_backup]=$_REQUEST[show_backup];
 }
 
 $dirlist=array();
@@ -60,8 +62,17 @@ print "Show: ";
 print "<input type='hidden' name='main_path' value='$main_path'>\n";
 print "<input type='hidden' name='path' value='$path'>\n";
 print "<input type='hidden' name='set_show' value='1'>\n";
-print "<input type='checkbox' name='show_hidden' ".($_SESSION[show_hidden]?"checked='checked' ":"")." onChange='submit()'> Hidden files";
-print "<input type='checkbox' name='show_duplicate' ".($_SESSION[show_duplicate]?"checked='checked' ":"")." onChange='submit()'> Duplicate files";
+print "<input type='checkbox' name='show_hidden' ".($_SESSION[show_hidden]?"checked='checked' ":"")." onChange='submit()'> Hidden files | ";
+print "<input type='checkbox' name='show_duplicate' ".($_SESSION[show_duplicate]?"checked='checked' ":"")." onChange='submit()'> Don't combine same files | ";
+print "Backup <select name='show_backup' onChange='submit()'>\n";
+print "<option value=''>all</option>\n";
+foreach($bak_list as $b) {
+  print "<option";
+  if($b==$_SESSION[show_backup])
+    print " selected";
+  print ">$b</option>\n";
+}
+print "</select>\n";
 print "</form>\n";
 
 print "<div class='dirlist_border'>";
@@ -97,25 +108,27 @@ ksort($dirlist);
 foreach($dirlist as $dir=>$data) {
   if(($dir!=".")&&($dir!=".."))
     if(($_SESSION[show_hidden])||(substr($dir, 0, 1)!=".")) {
-      $r=($r+1)%2;
-      print "<tr class='row$r'><td valign='top'><b>";
+      if((!$_SESSION[show_backup])||(in_array($_SESSION[show_backup], $data))) {
+	$r=($r+1)%2;
+	print "<tr class='row$r'><td valign='top'><b>";
 
-      print "<a href='file_list.php?main_path=$main_path&path=".rawurlencode("$path/$dir/")."'>$dir</a>\n";
+	print "<a href='file_list.php?main_path=$main_path&path=".rawurlencode("$path/$dir/")."'>$dir</a>\n";
 
-      print "<td>\n";
-      if($_SESSION[show_duplicate]) {
-	print "<table>\n";
-	usort($data, bakcmp);
-	foreach($data as $dir) {
-	  print "<tr><td>$dir</td></tr>\n";
+	print "<td>\n";
+	if($_SESSION[show_duplicate]) {
+	  print "<table>\n";
+	  usort($data, bakcmp);
+	  foreach($data as $dir) {
+	    print "<tr><td>$dir</td></tr>\n";
+	  }
+	  print "</table>\n";
 	}
-	print "</table>\n";
+	else {
+	  print "directory";
+	}
+	print "</td>\n";
+	print "</tr>\n";
       }
-      else {
-	print "directory";
-      }
-      print "</td>\n";
-      print "</tr>\n";
     }
 }
 
