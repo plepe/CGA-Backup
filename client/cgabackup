@@ -205,7 +205,7 @@ sub readCgBackup {
   }
 
   # Save the processed excludes again to BACKUP_EXCLUDE
-  $result{"BACKUP_EXCLUDE"}.="$comb";
+  $result{"BACKUP_EXCLUDE"}="$comb";
 
   # Und Baba
   return %result;
