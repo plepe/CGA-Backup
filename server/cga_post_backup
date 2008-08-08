@@ -1,10 +1,18 @@
 #!/usr/bin/perl
 
+# Parameterbehandlung
 $backup=$ARGV[0];
 $date=$ARGV[1];
 
+# touch the file last_backup_end
+print REMOTE_W "echo $endtime_format > $conf{hostdir}/last_backup_end\n";
+
+# Das Verzeichnis auf richtigen Namen umbenennen
 system("mv $backup/${date}_incomplete $backup/$date");
+
+# Den Link auf das aktuelle Backup neu setzen
 unlink("$backup/last_backup");
 symlink("$date", "$backup/last_backup");
 
+# Das Verzeichnis fuer das naechste Backup freigeben
 unlink("$backup/lock");

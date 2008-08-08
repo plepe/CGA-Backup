@@ -16,6 +16,9 @@ sub bakcmp {
 $backup=$ARGV[0];
 $date=$ARGV[1];
 
+# Das Verzeichnis sicherheitshalber anlegen
+system("mkdir -p $backup");
+
 # Wenn derzeit ein Backup gemacht wird abbrechen
 if(-f "$backup/lock") {
   open(LOCK, "<$backup/lock");
@@ -34,8 +37,8 @@ close(LOCK);
 
 open(DEBUG, ">/$backup/log");
 
-# Das Verzeichnis sicherheitshalber anlegen
-system("mkdir -p $backup");
+# Beginnzeit speichern
+print REMOTE_W "echo $starttime_format > $conf{hostdir}/last_backup_start\n";
 
 # Wenn es dort bereits ein Backup von heute gibt, dann ein anderes Datum waehlen
 if((-d "$backup/$date")||(-d "$backup/${date}_incomplete")) {
@@ -96,7 +99,7 @@ if(!-l "$backup/$last_backup") {
 
 # Eine Hardlink-Kopie des letzten kompletten Backups anlegen
 if($last_backup) {
-  $result=system("cp --verbose --archive --link $backup/$last_backup $backup/${date}_incomplete >> /$backup/log 2>> /$backup/log");
+  $result=system("cp --archive --link $backup/$last_backup $backup/${date}_incomplete 2> /$backup/cp.errors");
 
   if($result!=0) {
     print "error when copying: $result (device full?)\n";
