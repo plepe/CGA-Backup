@@ -1,17 +1,21 @@
 #!/usr/bin/perl
 use POSIX qw(strftime);
+require 'getopt.pl';
+
+$CONFIGFILE="/etc/cgabackup-server.conf";
 
 $gb=1024*1024;
 
 $var_file="/var/spool/cga_build_statistic.state";
-$root="/backup-cg";
 $debug=0;
 
 sub save_var_info {
   my $VAR;
-  $status=$_[0];
+  my $status=$_[0];
+  my %conf=%{$_[1]};
+  my $id=join("", split(/\//, $conf{root_dir}));
 
-  open($VAR, ">$var_file");
+  open($VAR, ">$var_file-$id");
   print $VAR strftime("%Y-%m-%d", localtime)."\n";
   print $VAR "$status\n";
 
@@ -55,38 +59,40 @@ sub save_var_info {
 
 sub save_done_info {
   my $VAR;
+  my %conf=%{$_[0]};
+  my $id=join("", split(/\//, $conf{root_dir}));
 
-  open($VAR, ">/var/lib/cgabackup/backup_not_ended");
+  open($VAR, ">/var/lib/cgabackup/backup_not_ended-$id");
   foreach(keys %backup_not_ended) {
     print $VAR "$_:$backup_not_ended{$_}\n";
   }
   close($VAR);
 
-  open($VAR, ">/var/lib/cgabackup/backup_not_ended_unk");
+  open($VAR, ">/var/lib/cgabackup/backup_not_ended_unk-$id");
   foreach(@backup_not_ended_unk) {
     print $VAR "$_\n";
   }
   close($VAR);
 
-  open($VAR, ">/var/lib/cgabackup/progress_last_backup_list");
+  open($VAR, ">/var/lib/cgabackup/progress_last_backup_list-$id");
   foreach(keys %progress_last_backup_list) {
     print $VAR "$progress_last_backup_list{$_}\t$_\n";
   }
   close($VAR);
 
-  open($VAR, ">/var/lib/cgabackup/progress_total_list");
+  open($VAR, ">/var/lib/cgabackup/progress_total_list-$id");
   foreach(keys %progress_total_list) {
     print $VAR "$progress_total_list{$_}\t$_\n";
   }
   close($VAR);
 
-  open($VAR, ">/var/lib/cgabackup/last_backup_list");
+  open($VAR, ">/var/lib/cgabackup/last_backup_list-$id");
   foreach(keys %last_backup_list) {
     print $VAR "$last_backup_list{$_}\t$_\n";
   }
   close($VAR);
 
-  open($VAR, ">/var/lib/cgabackup/total_list");
+  open($VAR, ">/var/lib/cgabackup/total_list-$id");
   foreach(keys %total_list) {
     print $VAR "$total_list{$_}\t$_\n";
   }
@@ -98,9 +104,11 @@ sub load_var_info {
   my $mode;
   my $date;
   my $status;
+  my %conf=%{$_[0]};
+  my $id=join("", split(/\//, $conf{root_dir}));
 
-  if(-f "$var_file") {
-    open($VAR, "<$var_file");
+  if(-f "$var_file-$id") {
+    open($VAR, "<$var_file-$id");
     $date=<$VAR>; chop($date);
     $status=<$VAR>; chop($status);
     if($date ne strftime("%Y-%m-%d", localtime)) {
@@ -313,7 +321,7 @@ sub process {
       # finish
       $done{$p}=1;
 
-      save_var_info("not done");
+      save_var_info("not done", \%conf);
     }
     else {
 #      print "skipping $p\n";
@@ -361,71 +369,113 @@ sub process {
   }
 }
 
-open(MAIL, "|/usr/lib/sendmail techn\@cg.tuwien.ac.at");
-print MAIL "To: Backup-Admin <techn\@cg.tuwien.ac.at>\n";
-print MAIL "Subject: Daily Statistic of Backup\n";
-print MAIL "\n";
+do Getopt("c");
+if($opt_c) {
+  $CONFIGFILE=$opt_c;
+}
 
-load_var_info();
+# Configfile einlesen
+open(CONF, "<$CONFIGFILE") || die "$CONFIGFILE not found!\n";
+%conf=();
 
-process($root);
+# Jede Zeile durchgehen
+while($row=<CONF>) {
+  chop($row);
+  chop($row) if(substr($row, length($row)-1, 1) eq "\r"); # fuer DOS-Files
 
-print MAIL "Uebersicht ueber die Dateisysteme:\n";
-print MAIL sprintf("%-30s  %8s  %8s  %8s  %4s  (%7s)\n", "Mounted on", "Size", "Used", "Avail", "Use%", "Change");
-open(DF, "df -k|");
-while($r=<DF>) {
-  if($r =~ /[\t ]+([0-9]+)[\t ]*([0-9]+)[\t ]*([0-9]+)[\t ]*([0-9]+%)[\t ]*(\/backup[A-Za-z0-9\-\/_]+)$/) {
-    open($statdf, "tail -n1 $5/statistic.df | cut -d\" \" -f1 |");
-    $last=<$statdf>;
-    close($statdf);
-
-    print MAIL sprintf("%-30s %8.1fG %8.1fG %8.1fG  %3.0f%%  (%+6.1fG)\n", $5, $1/$gb, $2/$gb, $3/$gb, $4, ($2-$last)/$gb);
-
-    open($statdf, ">>$5/statistic.df");
-    print $statdf sprintf("%s %s\n", $2, strftime("%Y-%m-%d", localtime));
-    close($statdf);
+  if($row ne "") {
+    # Wenn es sich um keine Leerzeile handelt, dann in die Config aufnehmen
+    if($row !~ /^#/) {
+      ($key, $value)=split("=", $row);
+      $conf{$key}=$value;
+    }
+  }
+  else {
+    # Leerzeile -> Was machen
+    @k=keys %conf;
+    if(@k>0) {
+      process_dir(\%conf);
+    }
+    %conf=();
   }
 }
-close(DF);
-print MAIL "\n";
 
-print MAIL "Folgende Backups haben sich relativ am meisten vergroessert:\n";
-@progress_last_backup_list_sort=sort { $progress_last_backup_list{$b} <=> $progress_last_backup_list{$a} } keys %progress_last_backup_list;
-@progress_last_backup_list_sort=splice(@progress_last_backup_list_sort, 0, 20);
-foreach (@progress_last_backup_list_sort) {
-  print MAIL sprintf "  %-60s %9.2fM\n", $_, $progress_last_backup_list{$_}/1024;
-}
-print MAIL "\n";
 
-print MAIL "Folgende Backups haben sich absolut am meisten vergroessert:\n";
-@progress_total_list_sort=sort { $progress_total_list{$b} <=> $progress_total_list{$a} } keys %progress_total_list;
-@progress_total_list_sort=splice(@progress_total_list_sort, 0, 20);
-foreach (@progress_total_list_sort) {
-  print MAIL sprintf "  %-60s %9.2fM\n", $_, $progress_total_list{$_}/1024;
+@k=keys %conf;
+if(@k>0) {
+  process_dir(\%conf);
 }
 
-print MAIL "\nFolgende Backups wurden seit mind. 3 Tagen nicht vollendet:\n";
-@backup_not_ended_sort=sort { $backup_not_ended{$b} cmp $backup_not_ended{$a} } keys %backup_not_ended;
-foreach(@backup_not_ended_sort) {
-  $backup_not_ended{$_} =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}) /;
-  print MAIL sprintf "  %-50s %10s", $_, $1; 
+sub process_dir {
+  my %conf=%{$_[0]};
 
-  if($backup_start{$_} =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}) /) {
-    print MAIL sprintf " (start: %10s)", $1;
-  }
-
+  open(MAIL, "|/usr/lib/sendmail $conf{mail}");
+  print MAIL "To: Backup-Admin <$conf{mail}>\n";
+  print MAIL "Subject: Daily Statistic of Backup\n";
   print MAIL "\n";
-}
-foreach(@backup_not_ended_unk) {
-  print MAIL sprintf "  %-50s", $_;
 
-  if($backup_start{$_} =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}) /) {
-    print MAIL sprintf "           (start: %10s)", $1;
+  load_var_info(\%conf);
+
+  process($conf{root_dir});
+
+  print MAIL "Uebersicht ueber die Dateisysteme:\n";
+  print MAIL sprintf("%-30s  %8s  %8s  %8s  %4s  (%7s)\n", "Mounted on", "Size", "Used", "Avail", "Use%", "Change");
+  open(DF, "df -k|");
+  while($r=<DF>) {
+    if($r =~ /[\t ]+([0-9]+)[\t ]*([0-9]+)[\t ]*([0-9]+)[\t ]*([0-9]+%)[\t ]*(\/backup[A-Za-z0-9\-\/_]+)$/) {
+      open($statdf, "tail -n1 $5/statistic.df | cut -d\" \" -f1 |");
+      $last=<$statdf>;
+      close($statdf);
+
+      print MAIL sprintf("%-30s %8.1fG %8.1fG %8.1fG  %3.0f%%  (%+6.1fG)\n", $5, $1/$gb, $2/$gb, $3/$gb, $4, ($2-$last)/$gb);
+
+      open($statdf, ">>$5/statistic.df");
+      print $statdf sprintf("%s %s\n", $2, strftime("%Y-%m-%d", localtime));
+      close($statdf);
+    }
+  }
+  close(DF);
+  print MAIL "\n";
+
+  print MAIL "Folgende Backups haben sich relativ am meisten vergroessert:\n";
+  @progress_last_backup_list_sort=sort { $progress_last_backup_list{$b} <=> $progress_last_backup_list{$a} } keys %progress_last_backup_list;
+  @progress_last_backup_list_sort=splice(@progress_last_backup_list_sort, 0, 20);
+  foreach (@progress_last_backup_list_sort) {
+    print MAIL sprintf "  %-60s %9.2fM\n", $_, $progress_last_backup_list{$_}/1024;
+  }
+  print MAIL "\n";
+
+  print MAIL "Folgende Backups haben sich absolut am meisten vergroessert:\n";
+  @progress_total_list_sort=sort { $progress_total_list{$b} <=> $progress_total_list{$a} } keys %progress_total_list;
+  @progress_total_list_sort=splice(@progress_total_list_sort, 0, 20);
+  foreach (@progress_total_list_sort) {
+    print MAIL sprintf "  %-60s %9.2fM\n", $_, $progress_total_list{$_}/1024;
   }
 
-  print MAIL "\n";
-}
+  print MAIL "\nFolgende Backups wurden seit mind. 3 Tagen nicht vollendet:\n";
+  @backup_not_ended_sort=sort { $backup_not_ended{$b} cmp $backup_not_ended{$a} } keys %backup_not_ended;
+  foreach(@backup_not_ended_sort) {
+    $backup_not_ended{$_} =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}) /;
+    print MAIL sprintf "  %-50s %10s", $_, $1; 
 
-save_var_info("done");
-save_done_info();
-close(MAIL);
+    if($backup_start{$_} =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}) /) {
+      print MAIL sprintf " (start: %10s)", $1;
+    }
+
+    print MAIL "\n";
+  }
+  foreach(@backup_not_ended_unk) {
+    print MAIL sprintf "  %-50s", $_;
+
+    if($backup_start{$_} =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}) /) {
+      print MAIL sprintf "           (start: %10s)", $1;
+    }
+
+    print MAIL "\n";
+  }
+
+  close(MAIL);
+
+  save_var_info("done", \%conf);
+  save_done_info(\%conf);
+}

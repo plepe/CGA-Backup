@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 use POSIX qw(strftime);
+require 'getopt.pl';
 
-$last="/xxx";
+$CONFIGFILE="/etc/cgabackup-server.conf";
 
 sub month_sub {
   my $str=$_[0];
@@ -39,7 +40,8 @@ sub month_add {
 
 sub process {
   my $p=$_[0];
-  my %keep=%{$_[1]};
+  my %conf=%{$_[1]};
+  my %keep=%{$_[2]};
   my $DIRS;
 
   # Gibts hier eine Backup-Cfg? Wenn ja, dann Config ueberschreiben
@@ -191,7 +193,7 @@ sub process {
     opendir($DIRS, $p);
     while($r=readdir($DIRS)) {
       if($r !~ /^\./) {
-	process("$p/$r", \%keep);
+	process("$p/$r", \%conf, \%keep);
       }
     }
     closedir($DIRS);
@@ -209,4 +211,39 @@ $keep{'monthly'}=6;
 # Jeweils das erste Backup der letzten n Quartale aufheben
 $keep{'quarterly'}=5;
 
-process("/backup-cg", \%keep);
+do Getopt("c");
+if($opt_c) {
+  $CONFIGFILE=$opt_c;
+}
+
+# Configfile einlesen
+open(CONF, "<$CONFIGFILE") || die "$CONFIGFILE not found!\n";
+%conf=();
+
+# Jede Zeile durchgehen
+while($row=<CONF>) {
+  chop($row);
+  chop($row) if(substr($row, length($row)-1, 1) eq "\r"); # fuer DOS-Files
+
+  if($row ne "") {
+    # Wenn es sich um keine Leerzeile handelt, dann in die Config aufnehmen
+    if($row !~ /^#/) {
+      ($key, $value)=split("=", $row);
+      $conf{$key}=$value;
+    }
+  }
+  else {
+    # Leerzeile -> Was machen
+    @k=keys %conf;
+    if(@k>0) {
+      process($conf{"root_dir"}, \%conf, \%keep);
+    }
+    %conf=();
+  }
+}
+
+
+@k=keys %conf;
+if(@k>0) {
+  process($conf{"root_dir"}, %conf, %keep);
+}

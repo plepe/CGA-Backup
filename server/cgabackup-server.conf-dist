@@ -1,0 +1,5 @@
+root_dir=/backup1
+mail=admin1@example.com
+
+root_dir=/backup2
+mail=admin2@example.com
