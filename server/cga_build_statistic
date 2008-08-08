@@ -3,7 +3,7 @@ use POSIX qw(strftime);
 
 $gb=1024*1024;
 
-$var_file="/var/run/cga_build_statistic.state";
+$var_file="/var/spool/cga_build_statistic.state";
 $root="/backup-cg";
 $debug=0;
 
