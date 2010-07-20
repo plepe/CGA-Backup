@@ -10,12 +10,12 @@
 # the file every instance of the backup, only if changes to the database were
 # made.
 
-DBs=`mysql -uUSER -pPASSWORD -B -N -e "show databases;"`
-BACKUP_PATH="/home/mysql_backup"
+. /etc/cgabackup_mysql.conf
+DBs=`mysql -u$USER -p$PASSWORD -B -N -e "show databases;"`
 
 for DB in $DBs ; do
 	echo -n "Backup of DB $DB - "
-	mysqldump -uUSER -pPASSWORD --skip-lock-tables --skip-comments $DB > $BACKUP_PATH/__$DB.sql
+	mysqldump -u$USER -p$PASSWORD --skip-lock-tables --skip-comments $DB > $BACKUP_PATH/__$DB.sql
 
         if [ ! -f $BACKUP_PATH/$DB.sql ] ; then
 		mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
