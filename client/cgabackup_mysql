@@ -9,6 +9,9 @@
 # temporary file is deleted again. Therefore CGA-Backup doesn't need to copy
 # the file every instance of the backup, only if changes to the database were
 # made.
+#
+# To set the correct rights use:
+# grant select on *.* to cgabackup@localhost identified by 'foo';
 
 . /etc/cgabackup_mysql.conf
 DBs=`mysql -u$USER -p$PASSWORD -B -N -e "show databases;"`
