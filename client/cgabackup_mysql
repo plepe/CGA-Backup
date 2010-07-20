@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# This file makes a dump of all mysql databases. The mysql user needs read
+# access to all databases. The files are put into /home/mysql_backup
+# cgabackup_mysql is run by cron, before the real cgabackup script is executed.
+#
+# The dump is made to a temporary file and compared with the previous version.
+# If the file is an exact copy (If no changes to the database were made), the
+# temporary file is deleted again. Therefore CGA-Backup doesn't need to copy
+# the file every instance of the backup, only if changes to the database were
+# made.
+
+DBs=`mysql -uUSER -pPASSWORD -B -N -e "show databases;"`
+BACKUP_PATH="/home/mysql_backup"
+
+for DB in $DBs ; do
+	echo -n "Backup of DB $DB - "
+	mysqldump -ucgabackup -piemar --skip-lock-tables --skip-comments $DB > $BACKUP_PATH/__$DB.sql
+
+        if [ ! -f $BACKUP_PATH/$DB.sql ] ; then
+		mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
+		echo "finished (new backup)"
+        elif [ `stat -c "%s" $BACKUP_PATH/__$DB.sql` -eq `stat -c "%s" $BACKUP_PATH/$DB.sql` ] ; then
+		if [ "`diff -N $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql`" == "" ] ; then
+			rm $BACKUP_PATH/__$DB.sql
+			echo "no change, keeping old backup"
+		else
+			mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
+			echo "finished (same size)"
+		fi
+	else
+		mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
+		echo "finished (changed)"
+	fi
+done
