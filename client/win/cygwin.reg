@@ -1,0 +1,23 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\mounts v2]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\mounts v2\/]
+"native"="//zwirn/cygwin/"
+"flags"=dword:0000000a
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\mounts v2\/usr/bin]
+"native"="//zwirn/cygwin/bin"
+"flags"=dword:0000000a
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\mounts v2\/usr/lib]
+"native"="//zwirn/cygwin/lib"
+"flags"=dword:0000000a
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\Program Options]
+
