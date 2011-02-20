@@ -261,7 +261,7 @@ sub do_backup() {
     }
 
     # Call rsync to do the Backup
-    $error=system("$RSYNC -v -e $globalconf{'rsh'} -a ".
+    $error=system("$RSYNC -v -e $globalconf{'rsh'} -aAX ".
                   "--delete --delete-excluded ".
                   "$cgabackup{BACKUP_EXCLUDE} --exclude=/cgabackup*log ".
                   "$conf{dir}/ $conf{host}:$conf{hostdir}/${date}_incomplete ".
