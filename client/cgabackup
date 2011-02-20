@@ -260,12 +260,24 @@ sub do_backup() {
       $redirect="2>&1 | tee $conf{dir}/cgabackup-$date.log";
     }
 
+    if( $conf{host} =~ m/@/g ) {
+	    ($username, $host) = split(/@/, $conf{host}, 2);
+    } else {
+	    $username = getlogin();
+	    $host = $conf{host};
+    }
+
+    if( $username ne "root" ) {
+	    $rsyncpath = "--rsync-path=\"rsync --fake-super\"";
+    }
+
     # Call rsync to do the Backup
-    $error=system("$RSYNC -v -e $globalconf{'rsh'} -aAX ".
+    $rsync_command = "$RSYNC -v $rsyncpath -e $globalconf{'rsh'} -aAX ".
                   "--delete --delete-excluded ".
                   "$cgabackup{BACKUP_EXCLUDE} --exclude=/cgabackup*log ".
                   "$conf{dir}/ $conf{host}:$conf{hostdir}/${date}_incomplete ".
-                  "$redirect");
+                  "$redirect";
+    $error=system( $rsync_command );
 
     # Save ending time
     @endtime=localtime;
