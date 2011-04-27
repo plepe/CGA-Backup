@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# This file makes a dump of all pgsql databases. The pgsql user needs read
+# access to all databases. The files are put into /home/pgsql_backup
+# cgabackup_pgsql is run by cron, before the real cgabackup script is executed.
+#
+# The dump is made to a temporary file and compared with the previous version.
+# If the file is an exact copy (If no changes to the database were made), the
+# temporary file is deleted again. Therefore CGA-Backup doesn't need to copy
+# the file every instance of the backup, only if changes to the database were
+# made.
+#
+# To set the correct rights use:
+# grant select on *.* to cgabackup@localhost identified by 'foo';
+
+. /etc/cgabackup_pgsql.conf
+DBs=`psql -l -A | cut -f1 -d'|' | tail -n+3 | head -n-1`
+
+for DB in $DBs ; do
+	echo -n "Backup of DB $DB - "
+	pg_dump -d $DB > $BACKUP_PATH/__$DB.sql
+
+        if [ ! -f $BACKUP_PATH/$DB.sql ] ; then
+		mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
+		echo "finished (new backup)"
+        elif [ `stat -c "%s" $BACKUP_PATH/__$DB.sql` -eq `stat -c "%s" $BACKUP_PATH/$DB.sql` ] ; then
+		if [ "`diff -N $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql`" == "" ] ; then
+			rm $BACKUP_PATH/__$DB.sql
+			echo "no change, keeping old backup"
+		else
+			mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
+			echo "finished (same size)"
+		fi
+	else
+		mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
+		echo "finished (changed)"
+	fi
+done
