@@ -34,7 +34,7 @@ $version="v2.2";
 use POSIX qw(strftime);
 use FileHandle;
 use IPC::Open2;
-require 'getopt.pl';
+use Getopt::Std;
 
 # Fill variables with standard-values.
 %globalconf=();
@@ -376,7 +376,7 @@ sub do_backups() {
 # GLOBAL CODE
 
 ## Process Parameters ('c' awaits an argument)
-do Getopt("c");
+getopt("c");
 
 # Other Configfile
 if($opt_c) {
