@@ -236,19 +236,16 @@ sub do_backup() {
     $login_param="sh";
   }
 
-  # Open shell on server to start pre- and post-backup there
-  open2(*REMOTE_R, *REMOTE_W, "$globalconf{'rsh'} $conf{host} $login_param");
+  # assemble base ssh command:
+  my $remote = "$globalconf{'rsh'} $conf{host} $login_param";
 
   # Call pre_backup
-  print REMOTE_W "/usr/local/bin/cga_pre_backup $conf{hostdir} $date\n";
+  my @output = `$remote "/usr/bin/cga-backup-pre $conf{hostdir} $date"`;
+  my $pre_return_code = $? >> 8;
 
-  # Wait until preparing is finished and save status to $done
-  $done=<REMOTE_R>;
-  chop($done);
-  
-  if($done ne "ready") {
+  if($pre_return_code != 0) {
     # There was some error
-    print "error preparing backup: $done\n";
+    print "error preparing backup: @output\n";
   }
   else {
     # Whereto shall we pipe the output? Default: Logfile
@@ -288,7 +285,13 @@ sub do_backup() {
            "$conf{host}:$conf{hostdir}/");
 
     # Postprocess Backup
-    print REMOTE_W "/usr/local/bin/cga_post_backup $conf{hostdir} $date\n";
+    my @output = `$remote "/usr/bin/cga-backup-post $conf{hostdir} $date"`;
+    my $post_return_code = $? >> 8;
+
+    if($post_return_code != 0) {
+      # There was some error
+      print "error postprocessing backup: @output\n";
+    }
 
     # Do we have to send an email?
     if((($cgabackup{"BACKUP_ERRORMAIL"})&&($error))
@@ -333,10 +336,6 @@ sub do_backup() {
       close(MAIL);
     }
   }
-
-  # Close connection to backup server
-  close(REMOTE_R);
-  close(REMOTE_W);
 
   # Delete logfile, it has been copied to the server anyway
   unlink("$conf{dir}/cgabackup-$date.log");
