@@ -39,15 +39,15 @@ Run 'cgabackup' on the client. You might want to create a crontab entry.
 On the server for each configured backup a directory will be created, which contains the followings files/directories:
 
 Example: Directory {{{/backup/homes/foo}}}:
-* 20120622/ - The (full) backup from Juny 22nd, 2012.
-* 20121025/ - The (full) backup from October 25th, 2012.
-* 20121025a/ - A previous backup from October 25th, 2012 - it got renamed when the second backup was performed.
-* 20121102_incomplete/ - A backup from November 2nd, 2012 which was interrupted.
-* cgabackup-20120622.log - The logfile from the backup of Juny 22nd, 2012.
-* cgabackup-20121025.log - The logfile from the backup of October 25th, 2012.
-* lock - If this file exists a backup is taking place. It contains the pid of the backup process.
-* last_backup - A symbolic link pointing to the most current complete backup (20121025 in this example)
-* statistic - Contains disk space statistics, calculated in three different ways: fullsize (disk space usage for each backup), realsize (disk space change in comparison to the last backup - files which stayed the same are not included), backrealsize (disk space change calculcated backwards - from the current to the first backup)
-* statistic.last_backup.progress - See how the size of the backup increases
-* statistic.total.progress - See how the total size (all backups together) increases
-* cleanup.conf - You may create this file to override configuration for {{{cgabackup-cleanup}}} (Use {{{server/cleanup.conf-dist}}} as template - see file for default values).
+* **20120622/** - The (full) backup from Juny 22nd, 2012.
+* **20121025/** - The (full) backup from October 25th, 2012.
+* **20121025a/** - A previous backup from October 25th, 2012 - it got renamed when the second backup was performed.
+* **20121102_incomplete/** - A backup from November 2nd, 2012 which was interrupted.
+* **cgabackup-20120622.log** - The logfile from the backup of Juny 22nd, 2012.
+* **cgabackup-20121025.log** - The logfile from the backup of October 25th, 2012.
+* **lock** - If this file exists a backup is taking place. It contains the pid of the backup process.
+* **last_backup** - A symbolic link pointing to the most current complete backup (20121025 in this example)
+* **statistic** - Contains disk space statistics, calculated in three different ways: fullsize (disk space usage for each backup), realsize (disk space change in comparison to the last backup - files which stayed the same are not included), backrealsize (disk space change calculcated backwards - from the current to the first backup)
+* **statistic.last_backup.progress** - See how the size of the backup increases
+* **statistic.total.progress** - See how the total size (all backups together) increases
+* **cleanup.conf** - You may create this file to override configuration for {{{cgabackup-cleanup}}} (Use {{{server/cleanup.conf-dist}}} as template - see file for default values).
