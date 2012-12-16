@@ -234,7 +234,11 @@ sub process {
 	  push @list, $r;
 	}
       }
-      @list=sort @list;
+      
+      # Sort list by date (20001122a is before 20001122)
+      @list=sort { substr($a, 0, 8) eq substr($b, 0, 8)?
+                   substr($b, 8) cmp substr($a, 8):
+		   substr($a, 0, 8) cmp substr($b, 0, 8) } @list;
 
       # Wann wurde letztes Backup beendet
       if(-f "$p/last_backup_end") {
