@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # This file makes a dump of all mysql databases. The mysql user needs read
-# access to all databases. The files are put into /home/mysql_backup
-# cgabackup_mysql is run by cron, before the real cgabackup script is executed.
+# access to all databases. The files are put into /var/backup/mysql .
+# cgabackup-mysql is run by cron, before the real cgabackup script is executed.
 #
 # The dump is made to a temporary file and compared with the previous version.
 # If the file is an exact copy (If no changes to the database were made), the
@@ -13,7 +13,7 @@
 # To set the correct rights use:
 # grant select on *.* to cgabackup@localhost identified by 'foo';
 
-. /etc/cgabackup_mysql.conf
+. /etc/cgabackup-mysql.conf
 DBs=`mysql -u$USER -p$PASSWORD -B -N -e "show databases;"`
 
 for DB in $DBs ; do

@@ -240,7 +240,7 @@ sub do_backup() {
   my $remote = "$globalconf{'rsh'} $conf{host} $login_param";
 
   # Call pre_backup
-  my @output = `$remote "/usr/local/bin/cga_pre_backup $conf{hostdir} $date"`;
+  my @output = `$remote "/usr/local/bin/cgabackup-pre $conf{hostdir} $date"`;
   my $pre_return_code = $? >> 8;
 
   if($pre_return_code != 0) {
@@ -285,7 +285,7 @@ sub do_backup() {
            "$conf{host}:$conf{hostdir}/");
 
     # Postprocess Backup
-    my @output = `$remote "/usr/local/bin/cga_post_backup $conf{hostdir} $date"`;
+    my @output = `$remote "/usr/local/bin/cgabackup-post $conf{hostdir} $date"`;
     my $post_return_code = $? >> 8;
 
     if($post_return_code != 0) {

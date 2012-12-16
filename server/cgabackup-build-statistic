@@ -6,7 +6,7 @@ $CONFIGFILE="/etc/cgabackup-server.conf";
 
 $gb=1024*1024;
 
-$var_file="/var/spool/cga_build_statistic.state";
+$var_file="/var/spool/cgabackup-build-statistic.state";
 $debug=0;
 
 sub save_var_info {
