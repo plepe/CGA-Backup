@@ -44,13 +44,18 @@ sub process {
   my %keep=%{$_[2]};
   my $DIRS;
 
-  # Gibts hier eine Backup-Cfg? Wenn ja, dann Config ueberschreiben
-  if(-f "$p/backup.cfg") {
-    open($CFG, "<$p/backup.cfg");
-    while($r=<$CFG>) {
-      chop($r);
-      @a=split("=", $r);
-      $keep{$a[0]}=$a[1];
+  # Gibts hier eine backup.conf? Wenn ja, dann Config ueberschreiben
+  if(-f "$p/cleanup.conf") {
+    open($CONF, "<$p/cleanup.conf");
+    while($row=<$CONF>) {
+      chop($row);
+      chop($row) if(substr($row, length($row)-1, 1) eq "\r"); # for DOS-Files
+
+      # Ignore Lines starting with #
+      if($row !~ /^#/) {
+	($key, $value)=split("=", $row);
+	$keep{$key}=$value;
+      }
     }
     close($CFG);
   }

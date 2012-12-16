@@ -48,4 +48,4 @@ On the server for each configured backup a directory will be created, which cont
 * statistic - Contains disk space statistics, calculated in three different ways: fullsize (disk space usage for each backup), realsize (disk space change in comparison to the last backup - files which stayed the same are not included), backrealsize (disk space change calculcated backwards - from the current to the first backup)
 * statistic.last_backup.progress - See how the size of the backup increases
 * statistic.total.progress - See how the total size (all backups together) increases
-* backup.cfg - You may create a backup.cfg file to override outdate-configuration for {{{cgabackup-cleanup}}}.
+* cleanup.conf - You may create this file to override configuration for {{{cgabackup-cleanup}}} (Use {{{server/cleanup.conf-dist}}} as template - see file for default values).

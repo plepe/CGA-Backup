@@ -1,0 +1,10 @@
+# Always keep backups for at least n days
+daily=14
+# Keep incomplete backups for at least n days
+incomplete=7
+# Keep the first backup of each week for at least n weeks
+weekly=5
+# Keep the first backup of each month for at least n months
+monthly=6
+# Keep the first backup of each quarter year for at least n quarter years
+quarterly=5
