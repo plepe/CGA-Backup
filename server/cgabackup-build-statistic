@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 use POSIX qw(strftime);
-require 'getopt.pl';
+use Getopt::Std;
 
 $CONFIGFILE="/etc/cgabackup-server.conf";
 
@@ -369,7 +369,7 @@ sub process {
   }
 }
 
-do Getopt("c");
+getopt("c");
 if($opt_c) {
   $CONFIGFILE=$opt_c;
 }

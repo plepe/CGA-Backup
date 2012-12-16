@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 use POSIX qw(strftime);
-require 'getopt.pl';
+use Getopt::Std;
 
 $CONFIGFILE="/etc/cgabackup-server.conf";
 
@@ -211,7 +211,7 @@ $keep{'monthly'}=6;
 # Jeweils das erste Backup der letzten n Quartale aufheben
 $keep{'quarterly'}=5;
 
-do Getopt("c");
+getopt("c");
 if($opt_c) {
   $CONFIGFILE=$opt_c;
 }
