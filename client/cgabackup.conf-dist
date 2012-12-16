@@ -1,5 +1,7 @@
 # All variables before the first empty line are "global", every block between
 # two empty lines resp. EOF specify one backup configuration.
+# You may override each global option by specifying a different value in the
+# individual entry.
 #
 # host= specifies where to save the backups to
 # You may use USER@backup.example.com if you don't want to backup to
