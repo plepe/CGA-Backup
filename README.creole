@@ -37,6 +37,8 @@ ln -s /usr/local/CGA-Backup/server/cgabackup-info /usr/local/bin/
 Run 'cgabackup' on the client. You might want to create a crontab entry.
 
 On the server for each configured backup a directory will be created, which contains the followings files/directories:
+
+Example: Directory {{{/backup/homes/foo}}}:
 * 20120622/ - The (full) backup from Juny 22nd, 2012.
 * 20121025/ - The (full) backup from October 25th, 2012.
 * 20121025a/ - A previous backup from October 25th, 2012 - it got renamed when the second backup was performed.
