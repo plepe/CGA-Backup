@@ -7,6 +7,10 @@
 host=backup.example.com
 # rsh= specifies what remote shell to use as transport.
 rsh=ssh
+# if the serverscripts (cgabackup-pre resp. cgabackup-post) are not in the
+# PATH, uncomment the following line and set it to the correct directory.
+# It should end with a trailing / .
+#hostscripts=/usr/local/bin/
 
 # For each directory in /home/ create a backup under /backup/homes/
 dir=/home/*
