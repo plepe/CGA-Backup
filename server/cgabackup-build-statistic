@@ -165,7 +165,8 @@ sub update_progress {
   my $last_total=0;
   my $last_date=0;
   my $no_last_backup=0;
-  if(open($D, "tail -n 2 $p/statistic.last_backup.progress 2> /dev/null |")) {
+  if((-f "$p/statistic.last_backup.progress")&&
+     (open($D, "tail -n 2 $p/statistic.last_backup.progress 2> /dev/null |"))) {
      <$D> =~ /^([0-9]*) ([0-9]*)$/;
      my $pre_last_curr=$1;
      my $pre_last_date=$2;
@@ -188,7 +189,8 @@ sub update_progress {
 
   # Statisticinfos generieren - total.progress
   my $no_total=0;
-  if(open($D, "tail -n 2 $p/statistic.total.progress 2> /dev/null |")) {
+  if((-f "$p/statistic.total.progress")&&
+     (open($D, "tail -n 2 $p/statistic.total.progress 2> /dev/null |"))) {
      <$D> =~ /^([0-9]*) ([0-9]*)$/;
      my $pre_last_total=$1;
      my $pre_last_date=$2;
