@@ -38,6 +38,19 @@ sub month_add {
   return $str;
 }
 
+sub bakcmp {
+  $a=~/([0-9]{8})([a-z]?)/;
+  $a_d=$1; $a_k=$2;
+  $b=~/([0-9]{8})([a-z]?)/;
+  $b_d=$1; $b_k=$2;
+  if($b_d eq $a_d) {
+    $b_k cmp $a_k;
+  }
+  else {
+    $a <=> $b;
+  }
+}
+
 sub process {
   my $p=$_[0];
   my %conf=%{$_[1]};
@@ -82,8 +95,8 @@ sub process {
     closedir($DIRS);
 
     # Die Listen nach Datum sortieren
-    @backup_list=sort @backup_list;
-    @backup_incomplete_list=sort @backup_incomplete_list;
+    @backup_list=sort bakcmp @backup_list;
+    @backup_incomplete_list=sort bakcmp @backup_incomplete_list;
     # In den keep_backup_lists steht drin, welche Backups aufgehoben werden
     %keep_backup_list=();
     %keep_backup_incomplete_list=();
