@@ -128,6 +128,10 @@ sub process {
       }
     }
 
+    # Behalte ausserdem das Backup, auf das 'last_backup' zeigt
+    $keep_backup_list{readlink("$p/last_backup")}=1;
+    $keep_backup_incomplete_list{readlink("$p/last_backup")}=1;
+
     # Von den letzten n Wochen das erste Backup aufheben
     $monday_diff=-3;
     while(strftime("%u", localtime(time()-$monday_diff*86400)) ne "1") {
