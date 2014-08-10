@@ -72,15 +72,15 @@ sub process {
     @backup_incomplete_list=();
     opendir($DIRS, $p);
     while($r=readdir($DIRS)) {
-      if((-d "$p/$r")&&($r =~ /^([0-9]{4}[0-9]{2}[0-9]{2})_incomplete$/)) {
+      if((-d "$p/$r")&&($r =~ /^([0-9]{8}[a-z]?)_incomplete$/)) {
         push @backup_incomplete_list, $1;
       }
-      elsif((-d "$p/$r")&&($r =~ /^([0-9]{4}[0-9]{2}[0-9]{2})$/)) {
+      elsif((-d "$p/$r")&&($r =~ /^([0-9]{8}[a-z]?)$/)) {
         push @backup_list, $1;
       }
     }
     closedir($DIRS);
-    
+
     # Die Listen nach Datum sortieren
     @backup_list=sort @backup_list;
     @backup_incomplete_list=sort @backup_incomplete_list;
