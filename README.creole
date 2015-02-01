@@ -14,6 +14,19 @@ ln -s /usr/local/CGA-Backup/client/cgabackup /usr/local/bin/cgabackup
 
 Edit the {{{/etc/cgabackup.conf}}} with your favorite editor.
 
+Additionally in the root of every directory which will be backuped (e.g. {{{/home/USER}}} if {{{dir=/home/*}}} is one of the directories in {{{/etc/cgabackup.conf}}}), a file {{{.cgabackup}}} may be created with user specific parameters:
+{{{
+BACKUP_MAILTO		user@example.com
+BACKUP_SUCCESSMAIL	0
+BACKUP_ERRORMAIL	1
+BACKUP_EXCLUDE		./tmp/ *.mp3
+}}}
+
+* {{{BACKUP_MAILTO}}}: CGA-Backup can send mails if a backup is successful or fails. BACKUP_MAILTO specifies the mailto address (default: directory-name@hostname).
+* {{{BACKUP_SUCCESSMAIL}}}: If 1, an email will be sent, even if it is successful (default: 0).
+* {{{BACKUP_ERRORMAIL}}}: If 1, an email will be sent if it has failed (default: 0).
+* {{{BACKUP_EXCLUDE}}}: List of directories or wildcards which not will be backuped. In the specified case the 'tmp' directory in the root of the directory and all files ending on {{{.mp3}}} will not be backuped.
+
 === On the server ===
 Clone the repository to some path, e.g. /usr/local. Then copy and rename the server/cgabackup-server.conf-dist to /etc/cgabackup-server.conf and link the scripts to /usr/local/bin:
 {{{
