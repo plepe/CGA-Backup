@@ -10,15 +10,15 @@
 # the file every instance of the backup, only if changes to the database were
 # made.
 #
-# To set the correct rights use:
-# grant select on *.* to cgabackup@localhost identified by 'foo';
+# Best start this script as user 'postgres', than you don't have to grant
+# permissions to the backup user
 
-. /etc/cgabackup-pgsql.conf
-DBs=`psql -l -A | cut -f1 -d'|' | tail -n+3 | head -n-1`
+. /etc/cgabackup_pgsql.conf
+DBs=`psql -t -A -c "select datname from pg_database"`
 
 for DB in $DBs ; do
 	echo -n "Backup of DB $DB - "
-	pg_dump -d $DB > $BACKUP_PATH/__$DB.sql
+	pg_dump $DB > $BACKUP_PATH/__$DB.sql
 
         if [ ! -f $BACKUP_PATH/$DB.sql ] ; then
 		mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
