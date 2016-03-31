@@ -1,5 +1,7 @@
 CGA-Backup is basically an rsync wrapper, doing backups via rsh/ssh to a remote host. Every backup is a modification of the previous backup, therefore only changed files has to be transfered.
 
+Before doing a backup, on the server a hard-linked copy of the previous successful backup will be created - this new backup duplicates the directory structure, but uses the same file inodes (so-called hard links). When doing rsync, the new backup will be updated - new files added to the directory structure, changed files replaced and deleted files removed.
+
 INSTALLATION
 ============
 On the client(s)
@@ -49,10 +51,39 @@ ln -s /usr/local/CGA-Backup/server/cgabackup-info /usr/local/bin/
 * `cgabackup-cleanup` removes outdated backups. You should run it every now and then from crontab.
 * `cgabackup-build-statistic` calculates disk space usage of each backup. You should run it after the backups of the day are finished.
 
-=== Run cgabackup ===
-Run 'cgabackup' on the client. You might want to create a crontab entry.
+E.g. `/etc/crontab`:
+```crontab
+0 0  * * *      root    cgabackup-cleanup
+0 9  * * *      root    cgabackup-build-statistic
+```
 
-On the server for each configured backup a directory will be created, which contains the followings files/directories:
+=== Run cgabackup ===
+By default, ssh is used for transfering data. Therefore you need to add the client root's ssh public key to the server user's authorized key file:
+
+On the client (as root):
+```sh
+ssh-keygen
+# if you don't have a public key yet
+# press enter twice to use password-less key
+
+cat ~/.ssh/id_rsa.pub 
+# copy content to clipboard
+```
+
+On the server (as backup user, which might be root):
+```sh
+cat >> ~/.ssh/authorized_keys
+# paste content from clipboard, press Ctrl-D when finished
+```
+
+Run 'cgabackup' on the client. You might want to create an entry in `/etc/crontab`, e.g. (run cgabackup every day at 4:00AM):
+```crontab
+0 4  * * *      root    cgabackup
+```
+
+== Documentation ==
+=== Structure of a backup directory ===
+On the server, for each configured backup a directory will be created, which contains the followings files/directories:
 
 Example: Directory `/backup/homes/foo`:
 * **20120622/** - The (full) backup from Juny 22nd, 2012.
