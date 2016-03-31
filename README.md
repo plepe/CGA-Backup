@@ -137,7 +137,7 @@ chmod 700 /var/backups/pgsql
 
 Update `/etc/crontab` to run cgabackup-pgsql dayly before cgabackup is being run:
 ```crontab
-45 3  * * *     postgres    /usr/local/bin/cgabackup-pgsql
+45 3  * * *     root    /usr/local/bin/cgabackup-pgsql
 ```
 
-You can run `su postgres -c cgabackup-pgsql` anytime.
+You can run `cgabackup-pgsql` anytime.

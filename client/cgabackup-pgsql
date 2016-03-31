@@ -9,16 +9,13 @@
 # temporary file is deleted again. Therefore CGA-Backup doesn't need to copy
 # the file every instance of the backup, only if changes to the database were
 # made.
-#
-# Best start this script as user 'postgres', than you don't have to grant
-# permissions to the backup user
 
 . /etc/cgabackup-pgsql.conf
-DBs=`psql -t -A -c "select datname from pg_database"`
+DBs=`su postgres -c "psql -t -A -c \"select datname from pg_database\""`
 
 for DB in $DBs ; do
 	echo -n "Backup of DB $DB - "
-	pg_dump $DB > $BACKUP_PATH/__$DB.sql
+	su postgres -c "pg_dump $DB" > $BACKUP_PATH/__$DB.sql
 
         if [ ! -f $BACKUP_PATH/$DB.sql ] ; then
 		mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
