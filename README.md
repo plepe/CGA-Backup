@@ -98,3 +98,46 @@ Example: Directory `/backup/homes/foo`:
 * **statistic.last_backup.progress** - See how the size of the backup increases
 * **statistic.total.progress** - See how the total size (all backups together) increases
 * **cleanup.conf** - You may create this file to override configuration for `cgabackup-cleanup` (Use `server/cleanup.conf-dist` as template - see file for default values).
+
+== Extensions ==
+=== cgabackup-mysql ===
+cgabackup-mysql creates database dumps for all existing mysql databases. The dump file is only updated, when the contents of the database have been changed.
+
+```sh
+cp /usr/local/CGA-Backup/client/cgabackup-mysql.conf /etc/
+ln -s /usr/local/CGA-Backup/client/cgabackup-mysql /usr/local/bin
+mkdir -p /var/backup/mysql
+
+chmod 700 /etc/cgabackup-mysql.conf
+chmod 700 /var/backup/mysql
+
+mysql -uroot -p -e "grant select on *.* to cgabackup@localhost identified by 'PASSWORD'"
+editor /etc/cgabackup-mysql.conf
+# update password
+```
+
+Update `/etc/crontab` to run cgabackup-mysql dayly before cgabackup is being run:
+```crontab
+45 3  * * *     root    /usr/local/bin/cgabackup-mysql
+```
+
+You can run `cgabackup-mysql` anytime.
+
+=== cgabackup-pgsql ===
+cgabackup-pgsql creates database dumps for all existing PostgreSQL databases. The dump file is only updated, when the contents of the database have been changed.
+
+```sh
+cp /usr/local/CGA-Backup/client/cgabackup-pgsql.conf /etc/
+ln -s /usr/local/CGA-Backup/client/cgabackup-pgsql /usr/local/bin
+mkdir -p /var/backup/pgsql
+
+chmod 700 /etc/cgabackup-pgsql.conf
+chmod 700 /var/backup/pgsql
+```
+
+Update `/etc/crontab` to run cgabackup-pgsql dayly before cgabackup is being run:
+```crontab
+45 3  * * *     postgres    /usr/local/bin/cgabackup-pgsql
+```
+
+You can run `su postgres -c cgabackup-pgsql` anytime.

@@ -11,7 +11,7 @@
 # made.
 #
 # To set the correct rights use:
-# grant select on *.* to cgabackup@localhost identified by 'foo';
+# grant select on *.* to cgabackup@localhost identified by 'PASSWORD';
 
 . /etc/cgabackup-mysql.conf
 DBs=`mysql -u$USER -p$PASSWORD -B -N -e "show databases;"`
