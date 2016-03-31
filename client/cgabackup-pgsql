@@ -13,7 +13,7 @@
 # Best start this script as user 'postgres', than you don't have to grant
 # permissions to the backup user
 
-. /etc/cgabackup_pgsql.conf
+. /etc/cgabackup-pgsql.conf
 DBs=`psql -t -A -c "select datname from pg_database"`
 
 for DB in $DBs ; do
