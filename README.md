@@ -106,10 +106,10 @@ cgabackup-mysql creates database dumps for all existing mysql databases. The dum
 ```sh
 cp /usr/local/CGA-Backup/client/cgabackup-mysql.conf /etc/
 ln -s /usr/local/CGA-Backup/client/cgabackup-mysql /usr/local/bin
-mkdir -p /var/backup/mysql
+mkdir -p /var/backups/mysql
 
 chmod 700 /etc/cgabackup-mysql.conf
-chmod 700 /var/backup/mysql
+chmod 700 /var/backups/mysql
 
 mysql -uroot -p -e "grant select on *.* to cgabackup@localhost identified by 'PASSWORD'"
 editor /etc/cgabackup-mysql.conf
@@ -129,10 +129,10 @@ cgabackup-pgsql creates database dumps for all existing PostgreSQL databases. Th
 ```sh
 cp /usr/local/CGA-Backup/client/cgabackup-pgsql.conf /etc/
 ln -s /usr/local/CGA-Backup/client/cgabackup-pgsql /usr/local/bin
-mkdir -p /var/backup/pgsql
+mkdir -p /var/backups/pgsql
 
 chmod 700 /etc/cgabackup-pgsql.conf
-chmod 700 /var/backup/pgsql
+chmod 700 /var/backups/pgsql
 ```
 
 Update `/etc/crontab` to run cgabackup-pgsql dayly before cgabackup is being run:
