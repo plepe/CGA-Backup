@@ -57,7 +57,8 @@ E.g. `/etc/crontab`:
 0 9  * * *      root    cgabackup-build-statistic
 ```
 
-=== Run cgabackup ===
+Run cgabackup
+-------------
 By default, ssh is used for transfering data. Therefore you need to add the client root's ssh public key to the server user's authorized key file:
 
 On the client (as root):
@@ -81,8 +82,10 @@ Run 'cgabackup' on the client. You might want to create an entry in `/etc/cronta
 0 4  * * *      root    cgabackup
 ```
 
-== Documentation ==
-=== Structure of a backup directory ===
+Documentation
+=============
+Structure of a backup directory
+-------------------------------
 On the server, for each configured backup a directory will be created, which contains the followings files/directories:
 
 Example: Directory `/backup/homes/foo`:
@@ -99,8 +102,10 @@ Example: Directory `/backup/homes/foo`:
 * **statistic.total.progress** - See how the total size (all backups together) increases
 * **cleanup.conf** - You may create this file to override configuration for `cgabackup-cleanup` (Use `server/cleanup.conf-dist` as template - see file for default values).
 
-== Extensions ==
-=== cgabackup-mysql ===
+Extensions
+==========
+cgabackup-mysql
+---------------
 cgabackup-mysql creates database dumps for all existing mysql databases. The dump file is only updated, when the contents of the database have been changed.
 
 ```sh
@@ -123,7 +128,8 @@ Update `/etc/crontab` to run cgabackup-mysql dayly before cgabackup is being run
 
 You can run `cgabackup-mysql` anytime.
 
-=== cgabackup-pgsql ===
+cgabackup-pgsql
+---------------
 cgabackup-pgsql creates database dumps for all existing PostgreSQL databases. The dump file is only updated, when the contents of the database have been changed.
 
 ```sh
