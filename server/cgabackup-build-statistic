@@ -62,6 +62,8 @@ sub save_done_info {
   my %conf=%{$_[0]};
   my $id=join("", split(/\//, $conf{root_dir}));
 
+  mkdir "/var/lib/cgabackup" if !-f "/var/lib/cgabackup";
+
   open($VAR, ">/var/lib/cgabackup/backup_not_ended-$id");
   foreach(keys %backup_not_ended) {
     print $VAR "$_:$backup_not_ended{$_}\n";
