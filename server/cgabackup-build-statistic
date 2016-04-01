@@ -417,6 +417,12 @@ if(@k>0) {
 sub process_dir {
   my %conf=%{$_[0]};
 
+  @backup_not_ended_unk = ();
+  %progress_last_backup_list = ();
+  %progress_total_list = ();
+  %last_backup_list = ();
+  %total_list = ();
+
   open(MAIL, "|/usr/lib/sendmail $conf{mail}");
   print MAIL "To: Backup-Admin <$conf{mail}>\n";
   print MAIL "Subject: Daily Statistic of Backup\n";
