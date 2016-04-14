@@ -267,5 +267,5 @@ while($row=<CONF>) {
 
 @k=keys %conf;
 if(@k>0) {
-  process($conf{"root_dir"}, %conf, %keep);
+  process($conf{"root_dir"}, \%conf, \%keep);
 }
