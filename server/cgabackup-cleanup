@@ -101,6 +101,7 @@ sub process {
     %keep_backup_list=();
     %keep_backup_incomplete_list=();
 
+    print "Keep: @{[%keep]}\n" if($debug);
     print "Backuplist : ".join(", ", @backup_list)."\n" if($debug);
     print "IBackuplist: ".join(", ", @backup_incomplete_list)."\n" if($debug);
 
