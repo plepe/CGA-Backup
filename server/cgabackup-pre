@@ -40,6 +40,23 @@ open(DEBUG, ">/$backup/log");
 # Beginnzeit speichern
 print REMOTE_W "echo $starttime_format > $conf{hostdir}/last_backup_start\n";
 
+# Letztes Backup eruieren
+$last_backup=readlink("$backup/last_backup");
+print DEBUG "last_backup: $last_backup\n";
+@list=();
+if(!-l "$backup/$last_backup") {
+  opendir(DIR, "$backup");
+  while($f=readdir(DIR)) {
+    if($f =~ /^[0-9]{8}[a-z]?$/) {
+      push(@list, $f);
+    }
+  }
+
+  @list=sort bakcmp @list;
+  $last_backup=$list[@list-1];
+  print DEBUG "last_backup2: $last_backup\n";
+}
+
 # Wenn es dort bereits ein Backup von heute gibt, dann ein anderes Datum waehlen
 if((-d "$backup/$date")||(-d "$backup/${date}_incomplete")) {
   opendir(DIR, $backup);
@@ -68,6 +85,13 @@ if((-d "$backup/$date")||(-d "$backup/${date}_incomplete")) {
     system("mv $backup/$bak_name $backup/$newdate$bak_inc");
     system("mv $backup/cgabackup-$bak_date$bak_key.log $backup/cgabackup-$newdate.log")
       if(-f "$backup/cgabackup-$bak_date$bak_key.log");
+
+# Rename 'last_backup' link
+    if ($last_backup eq $bak_name) {
+      unlink("$backup/last_backup");
+      symlink("$newdate$bak_inc", "$backup/last_backup");
+      $last_backup = "$newdate$bak_inc";
+    }
   }
 
   system("mv $backup/$date $backup/${date}a")
@@ -76,26 +100,16 @@ if((-d "$backup/$date")||(-d "$backup/${date}_incomplete")) {
     if(-d "$backup/${date}_incomplete");
   system("mv $backup/cgabackup-$date.log $backup/cgabackup-${date}a.log")
     if(-f "$backup/cgabackup-$date.log");
-}
 
-print DEBUG "backup: $backup date: $date\n";
-
-# Letztes Backup eruieren
-$last_backup=readlink("$backup/last_backup");
-print DEBUG "last_backup: $last_backup\n";
-@list=();
-if(!-l "$backup/$last_backup") {
-  opendir(DIR, "$backup");
-  while($f=readdir(DIR)) {
-    if($f =~ /^[0-9]{8}[a-z]?$/) {
-      push(@list, $f);
-    }
+# Rename 'last_backup' link
+  if ($last_backup eq $date) {
+    unlink("$backup/last_backup");
+    symlink("${date}a", "$backup/last_backup");
+    $last_backup = "${date}a";
   }
-
-  @list=sort bakcmp @list;
-  $last_backup=$list[@list-1];
-  print DEBUG "last_backup2: $last_backup\n";
 }
+
+print DEBUG "backup: $backup date: $date last_backup: $last_backup\n";
 
 # Eine Hardlink-Kopie des letzten kompletten Backups anlegen
 if($last_backup) {
