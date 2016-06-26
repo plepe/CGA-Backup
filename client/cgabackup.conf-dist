@@ -13,6 +13,10 @@ rsh=ssh
 # PATH, uncomment the following line and set it to the correct directory.
 # It should end with a trailing / .
 #hostscripts=/usr/local/bin/
+#
+# vardir: local directory in which stats for last backups will be stored
+# (default: /var/lib/cgabackup)
+#vardir=/var/lib/cgabackup
 
 # For each directory in /home/ create a backup under /backup/homes/
 dir=/home/*

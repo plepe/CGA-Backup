@@ -39,6 +39,7 @@ use Getopt::Std;
 # Fill variables with standard-values.
 %globalconf=();
 $globalconf{rsh}="rsh -lroot";
+$globalconf{vardir}="/var/lib/cgabackup";
 $RSYNC="rsync";
 $SENDMAIL="/usr/lib/sendmail";
 $CONFIGFILE="/etc/cgabackup.conf";
