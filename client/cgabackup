@@ -220,6 +220,11 @@ sub readCgBackup {
 sub do_backup() {
   print "* ".$conf{dir}."\n";
 
+  # Evaluate $dir_id (used for touching file in vardir)
+  $dir_id = $conf{dir};
+  $dir_id =~ s/_/__/g;
+  $dir_id =~ s/\//_/g;
+
   # Das Datum in Kurzform speichern
   $date=strftime("%Y%m%d", localtime);
 
@@ -279,6 +284,14 @@ sub do_backup() {
 
     if ($error != 0) {
       print "error doing backup: $error\n";
+    }
+    else {
+      # Touch file in vardir/last_backup, so we know date of last successful
+      # backup
+      mkdir("$globalconf{vardir}");
+      mkdir("$globalconf{vardir}/last_backup");
+      open HANDLE, ">$globalconf{vardir}/last_backup/$dir_id";
+      close HANDLE;
     }
 
     # Save ending time
