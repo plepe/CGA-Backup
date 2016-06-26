@@ -218,8 +218,6 @@ sub readCgBackup {
 # Do a backup (read .cgabackup, start all commands, send status-reports)      #
 ###############################################################################
 sub do_backup() {
-  print "* ".$conf{dir}."\n";
-
   # Evaluate $dir_id (used for touching file in vardir)
   $dir_id = $conf{dir};
   $dir_id =~ s/_/__/g;
@@ -230,6 +228,17 @@ sub do_backup() {
 
   # Die Konfiguration einlesen
   %cgabackup=readCgBackup($conf{dir}, ".cgabackup");
+
+  # If age of last backup is less than 'min_interval', skip backup
+  if (-f "$globalconf{vardir}/last_backup/$dir_id") {
+    my $last_backup_age = time() - (stat("$globalconf{vardir}/last_backup/$dir_id"))[9];
+    print "$last_backup_age $conf{min_interval}\n";
+
+    return
+      if($last_backup_age < $conf{min_interval});
+  }
+
+  print "* ".$conf{dir}."\n";
 
   # Die Beginnzeit speichern.
   @starttime=localtime;

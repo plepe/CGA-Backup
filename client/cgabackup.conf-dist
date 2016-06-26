@@ -17,6 +17,11 @@ rsh=ssh
 # vardir: local directory in which stats for last backups will be stored
 # (default: /var/lib/cgabackup)
 #vardir=/var/lib/cgabackup
+#
+# min_interval: if the last backup is younger than n seconds don't start a new
+# backup (can be overridden for individual backups).
+# default: 0
+#min_interval=86000
 
 # For each directory in /home/ create a backup under /backup/homes/
 dir=/home/*
