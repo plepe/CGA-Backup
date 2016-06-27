@@ -34,6 +34,18 @@ use FileHandle;
 use IPC::Open2;
 use Getopt::Std;
 
+# Avoid duplicate execution of cgabackup
+open(my $h, "<:raw", "/proc/$$/cmdline");
+read($h, my $buf, 1048576);
+close($h);
+$cmdline = join(" ", split(/\0/s, $buf));
+
+$check_cmd = "pgrep -cxf '" . join("\\'", split("'", $cmdline)) . "'";
+if (`$check_cmd` > 1) {
+  print "cgabackup: failure; backup is already running.\n";
+  exit(1);
+}
+
 # Fill variables with standard-values.
 %globalconf=();
 $globalconf{rsh}="rsh -lroot";
