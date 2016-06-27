@@ -1,13 +1,11 @@
 #!/usr/bin/perl
 ###############################################################################
-# CGA-Backup v2.2                                                             #
-# (C) 2000-2008 Stephan Plepelits - plepelits@cg.tuwien.ac.at                 #
+# CGA-Backup v2.3.4                                                           #
+# (C) 2000-2016 Stephan Bösch-Plepelits - plepelits@cg.tuwien.ac.at           #
 # Vienna University of Technology                                             #
 # Institute of Computer Graphics and Algorithms                               # 
 ###############################################################################
 #
-# Copyright (C) 2000-2008 Stephan Plepelits <plepelits@cg.tuwien.ac.at>
-# 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
@@ -23,7 +21,7 @@
 # 
 
 # Versionnummer
-$version="v2.2";
+$version="v2.3.4";
 
 # PARAMS:
 # -c file.conf        Use alternative Configfile
