@@ -252,7 +252,7 @@ sub do_backup() {
 
   if($pre_return_code != 0) {
     # There was some error
-    print "error preparing backup: @output\n";
+    print "error $pre_return_code preparing backup: @output\n";
   }
   else {
     # Whereto shall we pipe the output? Default: Logfile
