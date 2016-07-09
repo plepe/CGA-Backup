@@ -215,6 +215,9 @@ sub readCgBackup {
 # Do a backup (read .cgabackup, start all commands, send status-reports)      #
 ###############################################################################
 sub do_backup() {
+  # Init vars
+  @pre_param = ();
+
   print "* ".$conf{dir}."\n";
 
   # Das Datum in Kurzform speichern
@@ -238,7 +241,9 @@ sub do_backup() {
   my $remote = "$conf{'rsh'} $conf{host} $login_param";
 
   # Call pre_backup
-  my @output = `$remote "$conf{'hostscripts'}cgabackup-pre $conf{hostdir} $date"`;
+  $pre_param = join " ", @pre_param;
+
+  my @output = `$remote "$conf{'hostscripts'}cgabackup-pre $conf{hostdir} $date $pre_param"`;
   my $pre_return_code = $? >> 8;
 
   if($pre_return_code != 0) {

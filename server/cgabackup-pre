@@ -13,8 +13,9 @@ sub bakcmp {
   }
 }
 
-$backup=$ARGV[0];
-$date=$ARGV[1];
+@pre_param = @ARGV;
+$backup = shift @pre_param;
+$date = shift @pre_param;
 
 # Das Verzeichnis sicherheitshalber anlegen
 system("mkdir -p $backup");
