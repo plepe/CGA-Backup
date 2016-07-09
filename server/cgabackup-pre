@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use experimental 'smartmatch';
 
 sub bakcmp {
   $a=~/([0-9]{8})([a-z]?)/;
@@ -37,6 +38,7 @@ print LOCK getppid()."\n";
 close(LOCK);
 
 open(DEBUG, ">/$backup/log");
+print DEBUG "param: " . join(";", @pre_param) . "\n";
 
 # Letztes Backup eruieren
 $last_backup=readlink("$backup/last_backup");
