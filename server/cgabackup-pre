@@ -38,9 +38,6 @@ close(LOCK);
 
 open(DEBUG, ">/$backup/log");
 
-# Beginnzeit speichern
-print REMOTE_W "echo $starttime_format > $conf{hostdir}/last_backup_start\n";
-
 # Letztes Backup eruieren
 $last_backup=readlink("$backup/last_backup");
 print DEBUG "last_backup: $last_backup\n";
@@ -57,6 +54,15 @@ if(!-l "$backup/$last_backup") {
   $last_backup=$list[@list-1];
   print DEBUG "last_backup2: $last_backup\n";
 }
+
+# if there's already a backup of today, and 'prevent-repeated-backup' is set,
+# abort with error 16
+if(("prevent-repeated-backup" ~~ @pre_param)&&(-d "$backup/$date")) {
+  exit 16;
+}
+
+# Beginnzeit speichern
+print REMOTE_W "echo $starttime_format > $conf{hostdir}/last_backup_start\n";
 
 # Wenn es dort bereits ein Backup von heute gibt, dann ein anderes Datum waehlen
 if((-d "$backup/$date")||(-d "$backup/${date}_incomplete")) {

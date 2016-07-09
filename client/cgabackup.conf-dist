@@ -13,6 +13,11 @@ rsh=ssh
 # PATH, uncomment the following line and set it to the correct directory.
 # It should end with a trailing / .
 #hostscripts=/usr/local/bin/
+#
+# prevent-repeated-backup: per default (or when false), cgabackup will do
+# repeatedly backups if called again, with old backups (of the same day) being
+# renamed. If set to true, cgabackup will not do another backup.
+prevent-repeated-backup=false
 
 # For each directory in /home/ create a backup under /backup/homes/
 dir=/home/*

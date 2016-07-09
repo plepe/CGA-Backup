@@ -241,6 +241,10 @@ sub do_backup() {
   my $remote = "$conf{'rsh'} $conf{host} $login_param";
 
   # Call pre_backup
+  if($conf{'prevent-repeated-backup'} eq 'true') {
+    push @pre_param, "prevent-repeated-backup";
+  }
+
   $pre_param = join " ", @pre_param;
 
   my @output = `$remote "$conf{'hostscripts'}cgabackup-pre $conf{hostdir} $date $pre_param"`;
