@@ -15,7 +15,7 @@
 
 CFGFILE="/etc/cgabackup-mysql.conf"
 
-if [ `find "${CFGFILE}" -perm -004` ] ; then
+if [ ! `find "${CFGFILE}" -perm 400` ] ; then
   echo "${CFGFILE} needs permissions 400 (not writable, readable only by user)!"
   exit 1
 fi
