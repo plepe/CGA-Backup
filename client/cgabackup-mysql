@@ -38,6 +38,11 @@ if [ ! -d $BACKUP_PATH ] ; then
   exit 1
 fi
 
+if [ ! `find "${BACKUP_PATH}" -perm 700` ] ; then
+  echo "${BACKUP_PATH} needs permissions 700 (writable & readable only by user)!"
+  exit 1
+fi
+
 DBs=`mysql --defaults-extra-file=${CFGFILE} -B -N -e "show databases;"`
 if [ $? != 0 ] ; then
   echo "An error occured. Can't get list of databases."
