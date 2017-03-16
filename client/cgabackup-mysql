@@ -45,6 +45,13 @@ if [ $? != 0 ] ; then
 fi
 
 for DB in $DBs ; do
+        if [ "${DB}" = "information_schema" ] ; then
+                continue
+        fi
+        if [ "${DB}" = "performance_schema" ] ; then
+                continue
+        fi
+
 	echo -n "Backup of DB $DB - "
 	mysqldump --defaults-extra-file=${CFGFILE} --skip-lock-tables --skip-comments $DB > $BACKUP_PATH/__$DB.sql
 
