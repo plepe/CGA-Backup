@@ -276,8 +276,8 @@ sub do_backup() {
 
     # Ignore the following errors:
     #    0: Success
-    #   24: Partial transfer due to vanished source files
-    if (($error != 0) && ($error != 24)) {
+    #   6144: Partial transfer due to vanished source files (error 24)
+    if (($error != 0) && ($error != 6144)) {
       print "error doing backup: $error\n";
     }
 
