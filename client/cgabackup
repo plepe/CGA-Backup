@@ -274,7 +274,10 @@ sub do_backup() {
                   "$redirect";
     $error=system( $rsync_command );
 
-    if ($error != 0) {
+    # Ignore the following errors:
+    #    0: Success
+    #   24: Partial transfer due to vanished source files
+    if (($error != 0) && ($error != 24)) {
       print "error doing backup: $error\n";
     }
 
