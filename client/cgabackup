@@ -372,6 +372,8 @@ sub do_backups() {
   # Search for matching directories
   open(DIRLIST, "ls -d $conf{dir}|");
   while($dir=<DIRLIST>) {
+    my $skip_backup=0;
+
     chop($dir);
 
     # Ignore Files and symbolic Links
@@ -383,8 +385,14 @@ sub do_backups() {
       $dir=~/\/([^\/]*)$/;
       $conf{hostdir}="$conf{hostdir}/$1";
 
+      if (exists($conf{exclude}) && (grep /^$1$/, split ' ', $conf{exclude})) {
+        $skip_backup=1;
+      }
+
       # Das Backup starten
-      do_backup();
+      if (!$skip_backup) {
+        do_backup();
+      }
 
       # Die originale Config fuer den naechsten Durchlauf wieder herstellen
       %conf=%save_conf;

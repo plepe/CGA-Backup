@@ -17,6 +17,7 @@ rsh=ssh
 # For each directory in /home/ create a backup under /backup/homes/
 dir=/home/*
 hostdir=/backup/homes/
+#exclude=foo bar
 
 dir=/etc
 hostdir=/backup/etc
