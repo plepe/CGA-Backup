@@ -27,12 +27,26 @@ $version="v2.3.4";
 # -c file.conf        Use alternative Configfile
 # -p                  Pause after finishing Backup
 # -v                  Verbose-Mode
+# -w                  Wait for backup host to come online before starting
+#                     (Try every 5 minutes)
 
 # Required Resources
 use POSIX qw(strftime);
 use FileHandle;
 use IPC::Open2;
 use Getopt::Std;
+
+# Avoid duplicate execution of cgabackup
+open(my $h, "<:raw", "/proc/$$/cmdline");
+read($h, my $buf, 1048576);
+close($h);
+$cmdline = join(" ", split(/\0/s, $buf));
+
+$check_cmd = "pgrep -cxf '" . join("\\'", split("'", $cmdline)) . "'";
+if (`$check_cmd` > 1) {
+  print "cgabackup: failure; backup is already running.\n";
+  exit(1);
+}
 
 # Fill variables with standard-values.
 %globalconf=();
@@ -396,6 +410,10 @@ if($opt_v) {
 if($opt_p) {
   $PAUSE=1;
 }
+# Parametr -w => Wait for backup host to come online
+if($opt_w) {
+  $WAIT_FOR_HOST = 1;
+}
 
 ## Read Configfile
 open(CONF, "<$CONFIGFILE") || die "$CONFIGFILE not found!\n";
@@ -412,6 +430,27 @@ while(($row=<CONF>)&&($row ne "\n")&&($row ne "\r\n")) {
     ($key, $value)=split("=", $row);
     $globalconf{$key}=$value;
   }
+}
+
+# Wait for backup host to come online
+if ($WAIT_FOR_HOST) {
+  $check_cmd = "$globalconf{rsh} -q -o 'BatchMode=yes' -o 'ConnectionAttempts=1' -o 'ConnectTimeout=5' $globalconf{host} exit";
+  do {
+    $result = system($check_cmd);
+
+    if ($result == -1) {
+      print "Failed to execute wait command!\n";
+      exit(1);
+    }
+    if ($result & 127) {
+      printf "Received signal %d\n", ($result & 127);
+      exit(1);
+    }
+    if ($result != 0) {
+      sleep(300);
+    }
+
+  } while ($result != 0);
 }
 
 # Read each entry in Config. Use %globalconf as base for %conf.
