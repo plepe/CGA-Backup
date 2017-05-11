@@ -288,13 +288,6 @@ sub do_backup() {
                   "$redirect";
     $error=system( $rsync_command );
 
-    # Ignore the following errors:
-    #    0: Success
-    #   6144: Partial transfer due to vanished source files (error 24)
-    if (($error != 0) && ($error != 6144)) {
-      print "error doing backup: $error\n";
-    }
-
     # Save ending time
     @endtime=localtime;
     $endtime_format=strftime("%Y-%m-%d %H:%M:%S", @endtime);
@@ -304,6 +297,10 @@ sub do_backup() {
            "$conf{host}:$conf{hostdir}/");
 
     # Postprocess Backup
+    #
+    # Ignore the following errors:
+    #    0: Success
+    #   6144: Partial transfer due to vanished source files (error 24)
     if (($error == 0) || ($error == 6144)) {
       my @output = `$remote "$conf{'hostscripts'}cgabackup-post $conf{hostdir} $date"`;
       my $post_return_code = $? >> 8;
@@ -312,6 +309,9 @@ sub do_backup() {
         # There was some error
         print "error postprocessing backup: @output\n";
       }
+    }
+    else {
+      print "error doing backup: $error\n";
     }
 
     # Do we have to send an email?
