@@ -1,3 +1,7 @@
+v2.3.6, release 2017-05-11
+----------------------------
+* Bugfix
+
 v2.3.5, released 2017-05-08
 ---------------------------
 * cgabackup: When starting, check if backup (with the exact same cmdline) is
