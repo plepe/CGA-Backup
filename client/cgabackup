@@ -304,7 +304,7 @@ sub do_backup() {
            "$conf{host}:$conf{hostdir}/");
 
     # Postprocess Backup
-    if ($error == 0) {
+    if (($error == 0) || ($error == 6144)) {
       my @output = `$remote "$conf{'hostscripts'}cgabackup-post $conf{hostdir} $date"`;
       my $post_return_code = $? >> 8;
 
