@@ -14,6 +14,7 @@ git clone https://github.com/plepe/CGA-Backup.git
 cp /usr/local/CGA-Backup/client/cgabackup.conf-dist /etc/cgabackup.conf
 
 ln -s /usr/local/CGA-Backup/client/cgabackup /usr/local/bin/cgabackup
+ln -s /usr/local/CGA-Backup/client/cgabackup.cron /etc/cron.daily/cgabackup
 ```
 
 Edit the `/etc/cgabackup.conf` with your favorite editor.

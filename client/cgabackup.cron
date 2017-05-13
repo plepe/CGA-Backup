@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# link to /etc/cron.daily/cgabackup, to have automatic daily backup
+# cgabackup waits for the backup server to come online
+# if cgabackup is already running, quit
+
+nohup cgabackup -w 2>/dev/null >/dev/null &
