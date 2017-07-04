@@ -26,6 +26,7 @@ $version="v2.3.6";
 # PARAMS:
 # -c file.conf        Use alternative Configfile
 # -p                  Pause after finishing Backup
+# -P                  Show progress
 # -v                  Verbose-Mode
 # -w                  Wait for backup host to come online before starting
 #                     (Try every 5 minutes)
@@ -268,6 +269,11 @@ sub do_backup() {
       $add_options=" -v";
     }
 
+    # In progress-Mode show the progress
+    if($PROGRESS) {
+      $add_options="--info=progress2 --no-i-r ";
+    }
+
     if( $conf{host} =~ m/@/g ) {
 	    ($username, $host) = split(/@/, $conf{host}, 2);
     } else {
@@ -417,6 +423,10 @@ if($opt_v) {
 # Parameter -p => Pause before ending script
 if($opt_p) {
   $PAUSE=1;
+}
+# Parameter -P => Show progress
+if($opt_P) {
+  $PROGRESS=1;
 }
 # Parametr -w => Wait for backup host to come online
 if($opt_w) {
