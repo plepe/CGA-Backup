@@ -307,7 +307,8 @@ sub do_backup() {
     # Ignore the following errors:
     #    0: Success
     #   6144: Partial transfer due to vanished source files (error 24)
-    if (($error == 0) || ($error == 6144)) {
+    #   5888: Partial transfer due to unreadable files (error 23)
+    if (($error == 0) || ($error == 6144) || ($error == 5888)) {
       my @output = `$remote "$conf{'hostscripts'}cgabackup-post $conf{hostdir} $date"`;
       my $post_return_code = $? >> 8;
 
