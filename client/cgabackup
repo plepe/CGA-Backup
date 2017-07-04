@@ -261,12 +261,11 @@ sub do_backup() {
   }
   else {
     # Whereto shall we pipe the output? Default: Logfile
-    $redirect="> $conf{dir}/cgabackup-$date.log ".
-              "2>> $conf{dir}/cgabackup-$date.log";
+    $add_options="";
 
     # In verbose-Mode the output goes to logfile and stdout
     if($VERBOSE) {
-      $redirect="2>&1 | tee $conf{dir}/cgabackup-$date.log";
+      $add_options=" -v";
     }
 
     if( $conf{host} =~ m/@/g ) {
@@ -281,11 +280,12 @@ sub do_backup() {
     }
 
     # Call rsync to do the Backup
-    $rsync_command = "$RSYNC -v $rsyncpath -e $conf{'rsh'} -aAX ".
+    $rsync_command = "$RSYNC $rsyncpath -e $conf{'rsh'} -aAX ".
                   "--delete --delete-excluded ".
                   "$cgabackup{BACKUP_EXCLUDE} --exclude=/cgabackup*log ".
                   "$conf{dir}/ $conf{host}:$conf{hostdir}/${date}_incomplete ".
-                  "$redirect";
+		  "--log-file=$conf{dir}/cgabackup-$date.log ".
+                  "$add_options";
     $error=system( $rsync_command );
 
     # Save ending time
