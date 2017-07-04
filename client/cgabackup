@@ -21,7 +21,7 @@
 # 
 
 # Versionnummer
-$version="v2.3.6";
+$version="v2.4.0";
 
 # PARAMS:
 # -c file.conf        Use alternative Configfile
