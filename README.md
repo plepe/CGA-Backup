@@ -138,8 +138,8 @@ cp /usr/local/CGA-Backup/client/cgabackup-pgsql.conf /etc/
 ln -s /usr/local/CGA-Backup/client/cgabackup-pgsql /usr/local/bin
 mkdir -p /var/backups/pgsql
 
-chmod 700 /etc/cgabackup-pgsql.conf
-chmod 700 /var/backups/pgsql
+chmod 400 /etc/cgabackup-pgsql.conf
+chmod 400 /var/backups/pgsql
 ```
 
 Update `/etc/crontab` to run cgabackup-pgsql dayly before cgabackup is being run:
