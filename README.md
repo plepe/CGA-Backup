@@ -114,8 +114,8 @@ cp /usr/local/CGA-Backup/client/cgabackup-mysql.conf /etc/
 ln -s /usr/local/CGA-Backup/client/cgabackup-mysql /usr/local/bin
 mkdir -p /var/backups/mysql
 
-chmod 700 /etc/cgabackup-mysql.conf
-chmod 700 /var/backups/mysql
+chmod 400 /etc/cgabackup-mysql.conf
+chmod 400 /var/backups/mysql
 
 mysql -uroot -p -e "grant select on *.* to cgabackup@localhost identified by 'PASSWORD'"
 editor /etc/cgabackup-mysql.conf
