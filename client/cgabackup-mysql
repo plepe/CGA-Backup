@@ -58,7 +58,7 @@ for DB in $DBs ; do
         fi
 
 	echo -n "Backup of DB $DB - "
-	mysqldump --defaults-extra-file=${CFGFILE} --skip-lock-tables --skip-comments $DB > $BACKUP_PATH/__$DB.sql
+	mysqldump --defaults-extra-file=${CFGFILE} --default-character-set=utf8mb4 --skip-lock-tables --skip-comments $DB > $BACKUP_PATH/__$DB.sql
 
         if [ ! -f $BACKUP_PATH/$DB.sql ] ; then
 		mv $BACKUP_PATH/__$DB.sql $BACKUP_PATH/$DB.sql
