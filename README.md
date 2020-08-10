@@ -117,7 +117,7 @@ mkdir -p /var/backups/mysql
 chmod 400 /etc/cgabackup-mysql.conf
 chmod 400 /var/backups/mysql
 
-mysql -uroot -p -e "grant select on *.* to cgabackup@localhost identified by 'PASSWORD'"
+mysql -uroot -p -e "grant select,process on *.* to cgabackup@localhost identified by 'PASSWORD'"
 editor /etc/cgabackup-mysql.conf
 # update password
 ```
